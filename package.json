@@ -1,6 +1,6 @@
 {
   "name": "workflowy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Workflowy.com JSON API wrapper for node",
   "main": "index.coffee",
   "scripts": {
@@ -15,7 +15,7 @@
     "node",
     "api"
   ],
-  "author": "Spocdoc <hello@spocdoc.com> (https://spocdoc.com/)",
+  "author": "Mike Robertson",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/mikerobe/workflowy/issues"
