@@ -1,7 +1,6 @@
 _ = require 'lodash'
 Q = require 'q'
 request = require 'request'
-# FileCookieStore = require 'tough-cookie-filestore'
 
 
 utils =
@@ -26,14 +25,13 @@ module.exports = class Workflowy
     meta: "https://workflowy.com/get_initialization_data?client_version=#{Workflowy.clientVersion}"
     update: 'https://workflowy.com/push_and_poll'
 
-  constructor: (@username, @password) ->
-    # @jar = request.jar new FileCookieStore('cookies.jar')
-    @jar = request.jar()
+  constructor: (@username, @password, jar) ->
+    @jar = if jar then request.jar(jar) else request.jar()
     @request = request.defaults {@jar, json: true}
 
     @_lastTransactionId = null
 
-    login = Q.ninvoke @request,
+    @_login = Q.ninvoke @request,
       'post'
       url: Workflowy.urls.login
       form: {@username, @password}
@@ -45,7 +43,11 @@ module.exports = class Workflowy
       console.error "Error logging in: ", err
       throw err
 
-    @meta = login.then =>
+    @_refetch()
+
+
+  _refetch: ->
+    @meta = @_login.then =>
       Q.ninvoke @request,
         'get'
         url: Workflowy.urls.meta
@@ -64,52 +66,22 @@ module.exports = class Workflowy
     @nodes = @outline.then (outline) =>
       result = []
 
-      addChildren = (arr) ->
+      addChildren = (arr, parentId) ->
         result.push arr...
-        addChildren children for child in arr when children = child.ch
+        for child in arr
+          child.parentId = parentId
+          addChildren children, child.id if children = child.ch
         return
 
-      addChildren outline
+      addChildren outline, 'None'
       result
 
-  ###
-  # @search [optional]
-  # @returns an array of nodes that match the given string, regex or function
-  ###
-  find: (search) ->
-    unless search
-    else if _.isString search
-      condition = (node) -> node.nm is search
-    else if _.isRegExp search
-      condition = (node) -> search.test node.nm
-    else if _.isFunction search
-      condition = search
-    else
-      (deferred = Q.defer()).reject new Error 'unknown search type'
-      return deferred
-
-    @nodes.then (nodes) ->
-      nodes = _.filter nodes, condition if condition
-      nodes
-
-  update: (nodes, newNames) ->
-    unless _.isArray nodes
-      nodes = [nodes]
-      newNames = [newNames]
-
+  _update: (operations) ->
     @meta.then (meta) =>
       timestamp = utils.getTimestamp meta
       {clientId} = meta.projectTreeData
 
-      operations = for node, i in nodes
-        type: 'edit',
-        data:
-          projectid: node.id
-          name: newNames[i]
-        client_timestamp: timestamp
-        undo_data:
-          previous_last_modified: node.lm
-          previous_name: node.nm
+      operation.client_timestamp = timestamp for operation in operations
 
       Q.ninvoke @request,
         'post'
@@ -122,14 +94,92 @@ module.exports = class Workflowy
             most_recent_operation_transaction_id: @_lastTransactionId
             operations: operations
           ]
-      .then ([resp, body]) ->
+      .then ([resp, body]) =>
         utils.checkForErrors arguments...
-
         @_lastTransactionId = body.results[0].new_most_recent_operation_transaction_id
+        [resp, body]
 
-        # now update the nodes
-        for node, i in nodes
-          node.nm = newNames[i]
-          node.lm = timestamp
 
-        return
+  ###
+  # @search [optional]
+  # @returns an array of nodes that match the given string, regex or function
+  ###
+  find: (search, completed) ->
+    unless search
+    else if _.isString search
+      condition = (node) -> node.nm is search
+    else if _.isRegExp search
+      condition = (node) -> search.test node.nm
+    else if _.isFunction search
+      condition = search
+    else
+      (deferred = Q.defer()).reject new Error 'unknown search type'
+      return deferred
+
+    if completed?
+      originalCondition = condition
+      condition = (node) ->
+        (_.has(node, 'cp') is !!completed) and originalCondition node
+
+    @nodes.then (nodes) ->
+      nodes = _.filter nodes, condition if condition
+      nodes
+
+  delete: (nodes) ->
+    nodes = [nodes] unless _.isArray nodes
+
+    operations = for node in nodes
+      type: 'delete'
+      data: projectid: node.id
+      undo_data:
+        previous_last_modified: node.lm
+        parentid: node.parentId
+        priority: 5
+
+    @_update operations
+    .then =>
+      # just fetch the nodes again
+      @_refetch()
+      return
+
+  complete: (nodes, tf=true) ->
+    nodes = [nodes] unless _.isArray nodes
+
+    operations = for node in nodes
+      type: if tf then 'complete' else 'uncomplete'
+      data: projectid: node.id
+      undo_data:
+        previous_last_modified: node.lm
+        previous_completed: if tf then false else node.cp
+
+    @_update operations
+    .then =>
+      # now update the nodes
+      for node, i in nodes
+        if tf
+          node.cp = timestamp
+        else
+          delete node.cp
+
+      return
+
+  update: (nodes, newNames) ->
+    unless _.isArray nodes
+      nodes = [nodes]
+      newNames = [newNames]
+
+    operations = for node, i in nodes
+      type: 'edit',
+      data:
+        projectid: node.id
+        name: newNames[i]
+      undo_data:
+        previous_last_modified: node.lm
+        previous_name: node.nm
+
+    @_update operations
+    .then =>
+      for node, i in nodes
+        node.nm = newNames[i]
+        node.lm = timestamp
+      return

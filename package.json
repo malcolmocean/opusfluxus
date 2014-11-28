@@ -1,6 +1,6 @@
 {
   "name": "workflowy",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Workflowy.com JSON API wrapper for node",
   "main": "index.coffee",
   "scripts": {
@@ -25,7 +25,6 @@
     "lodash": "^2.4.1",
     "q": "^1.1.2",
     "request": "^2.48.0",
-    "tough-cookie": "^0.12.1",
-    "tough-cookie-filestore": "0.0.1"
+    "tough-cookie": "^0.12.1"
   }
 }
