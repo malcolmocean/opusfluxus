@@ -43,10 +43,10 @@ module.exports = class Workflowy
       console.error "Error logging in: ", err
       throw err
 
-    @_refetch()
+    @refresh()
 
 
-  _refetch: ->
+  refresh: ->
     @meta = @_login.then =>
       Q.ninvoke @request,
         'get'
@@ -97,7 +97,7 @@ module.exports = class Workflowy
       .then ([resp, body]) =>
         utils.checkForErrors arguments...
         @_lastTransactionId = body.results[0].new_most_recent_operation_transaction_id
-        [resp, body]
+        [resp, body, timestamp]
 
 
   ###
@@ -139,7 +139,7 @@ module.exports = class Workflowy
     @_update operations
     .then =>
       # just fetch the nodes again
-      @_refetch()
+      @refresh()
       return
 
   complete: (nodes, tf=true) ->
@@ -153,7 +153,7 @@ module.exports = class Workflowy
         previous_completed: if tf then false else node.cp
 
     @_update operations
-    .then =>
+    .then ([resp,body,timestamp]) =>
       # now update the nodes
       for node, i in nodes
         if tf
@@ -178,7 +178,7 @@ module.exports = class Workflowy
         previous_name: node.nm
 
     @_update operations
-    .then =>
+    .then ([resp,body,timestamp]) =>
       for node, i in nodes
         node.nm = newNames[i]
         node.lm = timestamp
