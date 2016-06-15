@@ -1,5 +1,5 @@
 #! /usr/bin/env node
-var Workflowy = require('./workflowy')
+var Workflowy = require('./')
 var exec = require('child_process').exec
 var prompt = require('prompt')
 var fs = require('fs')
