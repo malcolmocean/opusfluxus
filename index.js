@@ -29,7 +29,6 @@ module.exports = Workflowy = (function() {
   Workflowy.urls = {
     login: 'https://workflowy.com/accounts/login/',
     meta: "https://workflowy.com/get_initialization_data?client_version=" + Workflowy.clientVersion,
-    // update: 'http://localhost:5000/push_and_poll'
     update: 'https://workflowy.com/push_and_poll'
   }
 
@@ -111,18 +110,19 @@ module.exports = Workflowy = (function() {
       return function(outline) {
         var addChildren, result
         result = []
-        addChildren = function(arr, parentId) {
+        addChildren = function(arr, parentId, parentCompleted) {
           var child, children, j, len
           result.push.apply(result, arr)
           for (j = 0, len = arr.length; j < len; j++) {
             child = arr[j]
             child.parentId = parentId
+            child.pcp = parentCompleted
             if (children = child.ch) {
-              addChildren(children, child.id)
+              addChildren(children, child.id, child.cp || child.pcp)
             }
           }
         }
-        addChildren(outline, 'None')
+        addChildren(outline, 'None', )
         return result
       }
     })(this))
@@ -170,7 +170,7 @@ module.exports = Workflowy = (function() {
    * @returns an array of nodes that match the given string, regex or function
    */
 
-  Workflowy.prototype.find = function(search, completed) {
+  Workflowy.prototype.find = function(search, completed, parentCompleted) {
     var condition, deferred, originalCondition
     if (!search) {
 
@@ -188,10 +188,16 @@ module.exports = Workflowy = (function() {
       (deferred = Q.defer()).reject(new Error('unknown search type'))
       return deferred
     }
-    if (completed != null) {
+    if (completed !== undefined && completed !== null) {
       originalCondition = condition
       condition = function(node) {
         return (_.has(node, 'cp') === !!completed) && originalCondition(node)
+      }
+    }
+    if (parentCompleted !== undefined && parentCompleted !== null) {
+      originalCondition2 = condition
+      condition = function(node) {
+        return (_.has(node, 'pcp') === !!completed) && originalCondition2(node)
       }
     }
     return this.nodes.then(function(nodes) {

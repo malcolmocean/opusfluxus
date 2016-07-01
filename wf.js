@@ -63,7 +63,6 @@ if (argv.help) {
     var parentid = argv.parentid
     var priority = argv.priority
     var name = argv.name
-    console.log("priority", priority)
     console.log("• • • creating workflowy node • • •");
     wf.create(parentid, name, priority).then(function (result) {
       console.log("created!")
