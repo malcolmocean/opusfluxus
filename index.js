@@ -122,7 +122,7 @@ module.exports = Workflowy = (function() {
             }
           }
         }
-        addChildren(outline, 'None', )
+        addChildren(outline, 'None', false)
         return result
       }
     })(this))
