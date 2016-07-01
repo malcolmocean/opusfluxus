@@ -197,7 +197,7 @@ module.exports = Workflowy = (function() {
     if (parentCompleted !== undefined && parentCompleted !== null) {
       originalCondition2 = condition
       condition = function(node) {
-        return (_.has(node, 'pcp') === !!completed) && originalCondition2(node)
+        return (Boolean(node.pcp) === parentCompleted && originalCondition2(node)
       }
     }
     return this.nodes.then(function(nodes) {
