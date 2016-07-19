@@ -68,12 +68,23 @@ if (argv.help) {
       console.log("created!")
     })
   } else if (command === 'tree') {
+    var parentid = argv.parentid
     console.log("• • • fetching workflowy data • • •");
     wf.outline.then(function (outline) {
       var rootnode = {
         nm: 'root',
         ch: outline
       }
+      if (parentid != null)
+      for (var i = 0, len = outline.length; i < len; i++)
+       if(outline[i].id == parentid)
+        {
+          rootnode = {
+           nm: outline[i].nm,
+           ch: outline[i].ch
+          }
+          break;
+        }
       recursivePrint(rootnode, '', argv._[1] || 2)
     })
   } else {
