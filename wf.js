@@ -11,6 +11,8 @@ var rc_path = userhome+"/.wfrc"
 
 var exists = fs.existsSync(rc_path)
 var rc = exists && fs.readFileSync(rc_path, 'utf8')
+var withnote = false
+var hiddencompleted = false
 
 function onErr (err) {
   console.error(err)
@@ -40,7 +42,16 @@ function printHelp () {
 }
 
 function recursivePrint (node, prefix, depth) {
-  console.log(prefix + node.nm)
+  var println = null
+
+  if (withnote && node.no)
+   println = prefix + node.nm + '\n'+ prefix.replace('\u21b3',' ')+ node.no
+  else
+   println = prefix + node.nm
+
+  if (hiddencompleted && node.cp) println = null
+
+  if (println) console.log(println)
   if (depth < 1) {return}
   var children = node.ch
   for (var i in children) {
@@ -69,6 +80,8 @@ if (argv.help) {
     })
   } else if (command === 'tree') {
     var parentid = argv.parentid
+    withnote = argv.withnote
+    hiddencompleted = argv.hiddencompleted
     console.log("• • • fetching workflowy data • • •");
     wf.outline.then(function (outline) {
       var rootnode = {
