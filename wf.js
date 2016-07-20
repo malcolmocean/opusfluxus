@@ -13,6 +13,8 @@ var exists = fs.existsSync(rc_path)
 var rc = exists && fs.readFileSync(rc_path, 'utf8')
 var withnote = false
 var hiddencompleted = false
+var withid = false
+
 
 function onErr (err) {
   console.error(err)
@@ -48,7 +50,9 @@ function recursivePrint (node, prefix, depth) {
    println = prefix + node.nm + '\n'+ prefix.replace('\u21b3',' ')+ node.no
   else
    println = prefix + node.nm
-
+  
+  if (withid) println += '\n' + prefix.replace('\u21b3',' ') + node.id
+  
   if (hiddencompleted && node.cp) println = null
 
   if (println) console.log(println)
@@ -82,6 +86,7 @@ if (argv.help) {
     var parentid = argv.parentid
     withnote = argv.withnote
     hiddencompleted = argv.hiddencompleted
+    withid = argv.withid
     console.log("• • • fetching workflowy data • • •");
     wf.outline.then(function (outline) {
       var rootnode = {
