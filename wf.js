@@ -12,9 +12,9 @@ var rc_path = userhome+"/.wfrc"
 var exists = fs.existsSync(rc_path)
 var rc = exists && fs.readFileSync(rc_path, 'utf8')
 var withnote = false
-var hiddencompleted = false
+var hiddencompleted = false 
 var withid = false
-
+var id = null
 
 function onErr (err) {
   console.error(err)
@@ -43,20 +43,51 @@ function printHelp () {
   console.log("")
 }
 
+function getObject(theObject, id) {
+    var result = null;
+    if(theObject instanceof Array) {
+        for(var i = 0; i < theObject.length; i++) {
+            result = getObject(theObject[i], id);
+            if (result) {
+                break;
+            }   
+        }
+    }
+    else
+    {
+        for(var prop in theObject) {
+            if(prop == 'id') {
+                if(theObject[prop] == id) {
+                    return theObject;
+                }
+            }
+            if(theObject[prop] instanceof Object || theObject[prop] instanceof Array) {
+                result = getObject(theObject[prop], id);
+                if (result) {
+                    break;
+                }
+            } 
+        }
+    }
+    return result;
+}
+
 function recursivePrint (node, prefix, depth) {
-  var println = null
+  var println = null 
 
   if (withnote && node.no)
    println = prefix + node.nm + '\n'+ prefix.replace('\u21b3',' ')+ node.no
   else
    println = prefix + node.nm
-  
+
   if (withid) println += '\n' + prefix.replace('\u21b3',' ') + node.id
-  
+
   if (hiddencompleted && node.cp) println = null
 
   if (println) console.log(println)
+
   if (depth < 1) {return}
+
   var children = node.ch
   for (var i in children) {
     recursivePrint(children[i], prefix ? '  ' + prefix : '\u21b3 ', depth-1)
@@ -83,26 +114,26 @@ if (argv.help) {
       console.log("created!")
     })
   } else if (command === 'tree') {
-    var parentid = argv.parentid
+    console.log("• • • fetching workflowy data • • •");
+    id = argv.id
     withnote = argv.withnote
     hiddencompleted = argv.hiddencompleted
     withid = argv.withid
-    console.log("• • • fetching workflowy data • • •");
     wf.outline.then(function (outline) {
-      var rootnode = {
+    var rootnode = {
         nm: 'root',
-        ch: outline
-      }
-      if (parentid != null)
-      for (var i = 0, len = outline.length; i < len; i++)
-       if(outline[i].id == parentid)
-        {
+        ch: outline,
+        id: 'N/A'
+      }	
+    if (id != null) 
+     {
+      var objnode = getObject(outline, id)
           rootnode = {
-           nm: outline[i].nm,
-           ch: outline[i].ch
+           nm: objnode.nm,
+           ch: objnode.ch,
+           id: objnode.id
           }
-          break;
-        }
+      }
       recursivePrint(rootnode, '', argv._[1] || 2)
     })
   } else {
