@@ -39,6 +39,10 @@ function printHelp () {
   console.log("usage: wf <command> [<args>]\n")
   console.log("The commands currently available are:")
     console.log("\ttree n\t\t"+"print your workflowy nodes up to depth n (default: 2)")
+    console.log("\t\tid=<id>\t\t"+"print sub nodes under the <id> (default: root)")
+    console.log("\t\twithnote\t\t"+"print the note of nodes (default: false)")
+    console.log("\t\thiddencompleted\t\t"+"hide the completed lists (default: false)")
+    console.log("\t\twithid\t\t"+"print id of nodes (default: false)")
     console.log("\tcapture\t\t"+"follow it by a ")
   console.log("")
 }
