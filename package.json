@@ -1,6 +1,6 @@
 {
   "name": "opusfluxus",
-  "version": "0.2.5",
+  "version": "0.3.1",
   "description": "NodeJS wrapper for Workflowy (+ terminal client)",
   "main": "index.js",
   "scripts": {
@@ -22,10 +22,9 @@
     "url": "https://github.com/malcolmocean/opusfluxus/issues"
   },
   "dependencies": {
-    "lodash": "^2.4.1",
     "minimist": "^1.1.0",
-    "node-uuid": "^1.4.7",
-    "prompt": "^0.2.14",
+    "uuid": "3.1.0",
+    "prompt": "1.0.0",
     "q": "^1.1.2",
     "request": "^2.48.0"
   },

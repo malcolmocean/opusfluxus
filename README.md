@@ -1,10 +1,13 @@
 # opusfluxus
 NodeJS wrapper for WorkFlowy. Created for integration with [Complice](https://complice.co), a productivity app that's less "what are all the parts of this thing I have to do?" and more ***"what am I going to do today?"***
 
-This is super early stage! Currently the main advantages it has over [the original](https://github.com/mikerobe/workflowy) are:
+This is super early stage! Currently the main advantages it has over [the original](https://github.com/ruxi/workflowy) are:
 
-- it supports auth by sessionid cookie, meaning you don't need to store the user's password in plaintext anywhere. highly recommended.
+- it has a primitive command-line interface
 - it supports creating new nodes, which allows you to easily capture items to your workflowy :D
+- it supports auth by sessionid cookie, meaning you don't need to store the user's password in plaintext anywhere. highly recommended *(EDIT: it seems the original might allow this using some sort of "cookie jar", but I don't know how that's supposed to work.)*
+
+Also this project is in JavaScript, so if you prefer that to working in CoffeeScript, you've come to the right place.
 
 [![bitHound Score](https://www.bithound.io/github/malcolmocean/opusfluxus/badges/score.svg)](https://www.bithound.io/github/malcolmocean/opusfluxus)
 

@@ -1,30 +1,32 @@
-var _ = require('lodash')
 var Q = require('q')
 request = require('request')
 var querystring = require('querystring')
-var uuid = require('node-uuid')
+var uuidv4 = require('uuid/v4')
 
 var utils = {
   getTimestamp: function(meta) {
     return Math.floor((Date.now() - meta.projectTreeData.mainProjectTreeInfo.dateJoinedTimestampInSeconds) / 60)
   },
   makePollId: function() {
-    return _.sample('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 8).join('')
+    return (Math.random() + 1).toString(36).substr(2, 8)
   },
-  checkForErrors: function(arg) {
-    var body, error, ref, resp
+  httpAbove299toError: function (arg) {
+    var body, error, ref, resp, deferred
     resp = arg[0], body = arg[1]
-    if ((300 <= (ref = resp.statusCode) && ref < 600)) {
-      throw new Error("Error with request " + resp.request.uri.href + ": " + resp.statusCode)
+    if (!((resp.statusCode === 302) && (resp.headers.location === "https://workflowy.com/"))) {
+      if ((300 <= (ref = resp.statusCode) && ref < 600)) {
+        return Q.reject({status: resp.statusCode, message: "Error with request " + resp.request.uri.href + ": " + resp.statusCode})
+      }
+      if (error = body.error) {
+        return Q.reject({status: resp.statusCode, message: "Error with request " + resp.request.uri.href + ": " + error})
+      }
     }
-    if (error = body.error) {
-      throw new Error("Error with request " + resp.request.uri.href + ": " + error)
-    }
-  }
+    return arg
+  },
 }
 
 module.exports = Workflowy = (function() {
-  Workflowy.clientVersion = 16
+  Workflowy.clientVersion = 18
 
   Workflowy.urls = {
     login: 'https://workflowy.com/accounts/login/',
@@ -50,12 +52,13 @@ module.exports = Workflowy = (function() {
           username: this.username,
           password: this.password
         }
-      }).then(function(arg) {
-        var body, resp
-        resp = arg[0], body = arg[1]
-        if (!((resp.statusCode === 302) && (resp.headers.location === "https://workflowy.com/"))) {
-          utils.checkForErrors.apply(utils, arguments)
+      }).then(utils.httpAbove299toError)
+      .then(function (arg) {
+        var body = arg[1]
+        if (/Please enter a correct username and password./.test(body)) {
+          return Q.reject({status: 403, message: "Incorrect login info"})
         }
+      }).then(function(arg) {
         var jar = self.jar._jar.toJSON()
         for (c in jar.cookies) {
           if (jar.cookies[c].key === 'sessionid') {
@@ -63,9 +66,8 @@ module.exports = Workflowy = (function() {
             break
           }
         }
-      }).fail(function(err) {
-        console.error("Error logging in: ", err)
-        throw err
+      }, function (err) {
+        return Q.reject(err)
       })
     }
     this.refresh()
@@ -82,14 +84,14 @@ module.exports = Workflowy = (function() {
             Cookie: 'sessionid='+_this.sessionid
           }
         }
-        return Q.ninvoke(_this.request, 'get', opts).then(function(arg) {
-          var body, resp
-          resp = arg[0], body = arg[1]
-          utils.checkForErrors.apply(utils, arguments)
+        return Q.ninvoke(_this.request, 'get', opts)
+        .then(utils.httpAbove299toError)
+        .then(function(arg) {
+          var body = arg[1]
           return body
         }).fail(function(err) {
-          console.error("Error fetching document root:", err)
-          throw err
+          err.message = "Error fetching document root: " + err.message
+          return Q.reject(err)
         })
       }
     }
@@ -154,10 +156,11 @@ module.exports = Workflowy = (function() {
           headers: {
             Cookie: 'sessionid='+_this.sessionid
           }
-        }).then(function(arg) {
-          var body, resp
-          resp = arg[0], body = arg[1]
-          utils.checkForErrors.apply(utils, arguments)
+        })
+        .then(utils.httpAbove299toError)
+        .then(function(arg) {
+          var resp = arg[0]
+          var body = arg[1]
           _this._lastTransactionId = body.results[0].new_most_recent_operation_transaction_id
           return [resp, body, timestamp]
         })
@@ -174,16 +177,16 @@ module.exports = Workflowy = (function() {
     var condition, deferred, originalCondition
     if (!search) {
 
-    } else if (_.isString(search)) {
+    } else if (typeof search == 'string') {
       condition = function(node) {
         return node.nm === search
       }
-    } else if (_.isRegExp(search)) {
+    } else if (typeof search == 'function') {
+      condition = search
+    } else if (search instanceof RegExp) {
       condition = function(node) {
         return search.test(node.nm)
       }
-    } else if (_.isFunction(search)) {
-      condition = search
     } else {
       (deferred = Q.defer()).reject(new Error('unknown search type'))
       return deferred
@@ -191,7 +194,7 @@ module.exports = Workflowy = (function() {
     if (completed !== undefined && completed !== null) {
       originalCondition = condition
       condition = function(node) {
-        return (_.has(node, 'cp') === !!completed) && originalCondition(node)
+        return (node.cp === !!completed) && originalCondition(node)
       }
     }
     if (parentCompleted !== undefined && parentCompleted !== null) {
@@ -202,7 +205,7 @@ module.exports = Workflowy = (function() {
     }
     return this.nodes.then(function(nodes) {
       if (condition) {
-        nodes = _.filter(nodes, condition)
+        nodes = nodes.filter(condition)
       }
       return nodes
     })
@@ -210,7 +213,7 @@ module.exports = Workflowy = (function() {
 
   Workflowy.prototype.delete = function(nodes) {
     var node, operations
-    if (!_.isArray(nodes)) {
+    if (Array.isArray(nodes)) {
       nodes = [nodes]
     }
     operations = (function() {
@@ -244,7 +247,7 @@ module.exports = Workflowy = (function() {
     if (tf == null) {
       tf = true
     }
-    if (!_.isArray(nodes)) {
+    if (!Array.isArray(nodes)) {
       nodes = [nodes]
     }
     operations = (function() {
@@ -282,7 +285,7 @@ module.exports = Workflowy = (function() {
   }
 
   Workflowy.prototype.create = function (parentid, name, priority) {
-    var projectid = uuid.v4()
+    var projectid = uuidv4()
     var operations = [
       {  
         type: "create",
@@ -303,7 +306,9 @@ module.exports = Workflowy = (function() {
         }
       }
     ]
-    return this._update(operations).then((function(_this) {
+    return this._update(operations)
+    .then(utils.httpAbove299toError)
+    .then((function(_this) {
       return function(arg) {
         // TODO: for a local workflowy client
         //       we'll want to update the local node
@@ -313,7 +318,7 @@ module.exports = Workflowy = (function() {
 
   Workflowy.prototype.update = function(nodes, newNames) {
     var i, node, operations
-    if (!_.isArray(nodes)) {
+    if (!Array.isArray(nodes)) {
       nodes = [nodes]
       newNames = [newNames]
     }
@@ -355,4 +360,4 @@ module.exports = Workflowy = (function() {
 
 // ---
 // generated by coffee-script 1.9.2
-// code adapted from https://github.com/mikerobe/workflowy
+// code adapted from https://github.com/ruxi/workflowy

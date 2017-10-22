@@ -12,22 +12,14 @@ var rc_path = userhome+"/.wfrc"
 var exists = fs.existsSync(rc_path)
 var rc = exists && fs.readFileSync(rc_path, 'utf8')
 
-function onErr (err) {
-  console.error(err)
-  return 1
-}
-
-function handleErr(after) {
-  return function (err, result) {
-    if (err) {return onErr(err)}
-    if (!result) {return onErr("no result")}
-    if (result.errors) {
-      for (var e in result.errors) {
-        console.error(e)
-      }
-      return 1
-    }
-    after(result)
+function handleErr(reason) {
+  while (reason.reason) {reason = reason.reason}
+  console.log("Error " + reason.status + ": ", reason.message)
+  if (reason.status == 404) {
+    console.log("It seems your sessionid has expired. Let's log you in again.")
+    auth()
+  } else {
+    process.exit(1)
   }
 }
 
@@ -48,10 +40,15 @@ function recursivePrint (node, prefix, depth) {
   }
 }
 
+function exit () {
+  process.exit()
+}
+
 var regex = {
   sessionid: /sessionid: (\w+)/
 }
 
+console.log("~~~~~~~~~~~~~~~~~ ")
 if (argv.help) {
   printHelp()
 } else if (rc && regex.sessionid.test(rc)) {
@@ -63,52 +60,63 @@ if (argv.help) {
     var parentid = argv.parentid
     var priority = argv.priority
     var name = argv.name
-    console.log("• • • creating workflowy node • • •");
+    console.log("• • • creating workflowy node • • •")
     wf.create(parentid, name, priority).then(function (result) {
       console.log("created!")
-    })
+    }, handleErr).fin(exit)
   } else if (command === 'tree') {
-    console.log("• • • fetching workflowy data • • •");
+    console.log("• • • fetching workflowy tree • • •")
     wf.outline.then(function (outline) {
       var rootnode = {
         nm: 'root',
         ch: outline
       }
       recursivePrint(rootnode, '', argv._[1] || 2)
-    })
+    }, handleErr).fin(exit)
   } else {
+    console.log("• • • fetching workflowy data • • •")
     wf.meta.then(function (meta) {
       console.log("logged in as " + meta.settings.username)
       console.log(meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren.length + " top-level nodes")
-    })
+      if (command === 'meta') {
+        console.log("meta", meta)
+      }
+    }, handleErr).fin(exit)
   }
 } else {
-  // TODO handle the situation where the cookie has expired
   console.log("No ~/.wfrc detected... starting authentication process...")
   auth()
 }
 
 function auth () {
   console.log("What is your workflowy login info? This will not be saved, merely used once to authenticate.")
-    var schema = {
-      properties: {
-        email: {
-          required: true
-        },
-        password: {
-          required: true,
-          hidden: true
-        }
+  var schema = {
+    properties: {
+      email: {
+        required: true
+      },
+      password: {
+        required: true,
+        hidden: true
       }
     }
-    prompt.start()
-    prompt.get(schema, function (err, result) {
-      var wf = new Workflowy({username: result.email, password: result.password})
-      wf._login.then(function () {
+  }
+  prompt.start()
+  prompt.get(schema, function (err, result) {
+    if (err) {console.log('CANCELLED'); return}
+    var wf = new Workflowy({username: result.email, password: result.password})
+    wf._login.then(function () {
+      if (wf.sessionid) {
+        console.log("Login successful.")
         fs.writeFile(rc_path, "sessionid: "+wf.sessionid+"\n", function (errf) {
-          if (errf) { return onErr(errf); }
+          if (errf) {
+            return console.log("Failed to write sessionid to ~/.wfrc")
+          }
           console.log("Successfully wrote sessionid to ~/.wfrc")
         })
-      })
-    })
+      } else {
+        console.log("Failed to get sessionid. Check your username/password.")
+      }
+    }, handleErr).fin(exit)
+  })
 }
