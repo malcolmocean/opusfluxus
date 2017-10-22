@@ -173,16 +173,16 @@ module.exports = Workflowy = (function() {
    * @returns an array of nodes that match the given string, regex or function
    */
 
-  Workflowy.prototype.find = function(search, completed, parentCompleted, fineOne) {
-    var condition, deferred, originalCondition
+  Workflowy.prototype.find = function(search, completed, parentCompleted) {
+    var condition, deferred, originalCondition, originalCondition2
     if (!search) {
 
+    } else if (typeof search == 'function') {
+      condition = search
     } else if (typeof search == 'string') {
       condition = function(node) {
         return node.nm === search
       }
-    } else if (typeof search == 'function') {
-      condition = search
     } else if (search instanceof RegExp) {
       condition = function(node) {
         return search.test(node.nm)
@@ -191,16 +191,16 @@ module.exports = Workflowy = (function() {
       (deferred = Q.defer()).reject(new Error('unknown search type'))
       return deferred
     }
-    if (completed !== undefined && completed !== null) {
+    if (typeof completed == 'boolean') {
       originalCondition = condition
       condition = function(node) {
-        return (node.cp === !!completed) && originalCondition(node)
+        return (Boolean(node.cp) === !!completed) && originalCondition(node)
       }
     }
-    if (parentCompleted !== undefined && parentCompleted !== null) {
+    if (typeof parentCompleted == 'boolean') {
       originalCondition2 = condition
       condition = function(node) {
-        return Boolean(node.pcp) === parentCompleted && originalCondition2(node)
+        return Boolean(node.pcp) === !!parentCompleted && originalCondition2(node)
       }
     }
     return this.nodes.then(function(nodes) {

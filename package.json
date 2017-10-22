@@ -1,6 +1,6 @@
 {
   "name": "opusfluxus",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "NodeJS wrapper for Workflowy (+ terminal client)",
   "main": "index.js",
   "scripts": {
