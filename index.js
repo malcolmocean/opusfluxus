@@ -173,7 +173,7 @@ module.exports = Workflowy = (function() {
    * @returns an array of nodes that match the given string, regex or function
    */
 
-  Workflowy.prototype.find = function(search, completed, parentCompleted) {
+  Workflowy.prototype.find = function(search, completed, parentCompleted, fineOne) {
     var condition, deferred, originalCondition
     if (!search) {
 
@@ -284,7 +284,7 @@ module.exports = Workflowy = (function() {
     })(this))
   }
 
-  Workflowy.prototype.create = function (parentid, name, priority) {
+  Workflowy.prototype.create = function (parentid, name, priority, note) {
     var projectid = uuidv4()
     var operations = [
       {  
@@ -299,10 +299,8 @@ module.exports = Workflowy = (function() {
         type: "edit",
         data: {  
           projectid: projectid,
-          name: name
-        },
-        undo_data: {  
-          previous_last_modified: 140101228,
+          name: name,
+          description: note,
         }
       }
     ]

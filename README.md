@@ -29,6 +29,34 @@ wf # run this once to ensure you're authenticated
 
 Currently only has two features. One is to print your list (`wf tree 1` prints just top-level nodes, `wf tree 2` prints those and their children, etc) and the other is to append datapoints to a given node:
 
+#### Print tree
+
+Thanks to [sujunmin](https://github.com/sujunmin) this now has a bunch of options:
+
+```bash
+tree [n]             print your workflowy nodes up to depth n (default: 2)
+  --id=<id>            print sub nodes under the <id> (default: whole tree)
+  --withnote           print the note of nodes (default: false)
+  --hiddencompleted    hide the completed lists (default: false)
+  --withid             print id of nodes (default: false)
+```
+
+#### Capture/append
+
+Use Workflowy for tasks but wish you had a quicker way to capture things to your inbox? Now you can do that! Well, it takes a little set-up, but once you've got it it's awesome.
+
+The command is `capture`, and here's the spec:
+
+```bash
+capture            add something to a particular node
+   --parentid=<id>      <36-digit uuid of parent> (required)
+   --name=<str>         what to actually put on the node
+  [--priority=#]        0 as first child, 1 as second (default 0 (top))
+                            (use a number like 10000 for bottom)
+  [--note=<str>]        a note for the node (default '')
+
+```
+
 `wf capture --parentid "<36-digit uuid>" --priority=0 --name ""`
 
 How to get the parentid:
@@ -46,3 +74,7 @@ I have the following in `.bash_aliases`, which allows me to instantly capture an
 ```bash
 alias win="wf capture --parentid='00000000-0000-0000-0000-000000000000' --name"
 ```
+
+So then I just open terminal and type `win "1) call Benjamin #thursday"
+
+Oh, and by the way, that task then gets automatically pulled onto thursday's todo list, thanks to [Complice](https://complice.co/and/workflowy).
