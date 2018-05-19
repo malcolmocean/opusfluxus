@@ -1,6 +1,6 @@
 {
   "name": "opusfluxus",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "NodeJS wrapper for Workflowy (+ terminal client)",
   "main": "index.js",
   "scripts": {
@@ -17,16 +17,19 @@
     "api"
   ],
   "author": "Malcolm Ocean <malcolm@malcolmocean.com> (http://malcolmocean.com/)",
+  "contributors": [
+    "Mike Robertson"
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/malcolmocean/opusfluxus/issues"
   },
   "dependencies": {
     "minimist": "^1.1.0",
-    "uuid": "3.1.0",
     "prompt": "1.0.0",
     "q": "^1.1.2",
-    "request": "^2.48.0"
+    "request": "^2.48.0",
+    "uuid": "3.1.0"
   },
   "bin": {
     "wf": "wf.js"

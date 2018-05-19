@@ -11,14 +11,15 @@ var utils = {
     return (Math.random() + 1).toString(36).substr(2, 8)
   },
   httpAbove299toError: function (arg) {
-    var body, error, ref, resp, deferred
+    var body, error, resp
     resp = arg[0], body = arg[1]
-    if (!((resp.statusCode === 302) && (resp.headers.location === "https://workflowy.com/"))) {
-      if ((300 <= (ref = resp.statusCode) && ref < 600)) {
-        return Q.reject({status: resp.statusCode, message: "Error with request " + resp.request.uri.href + ": " + resp.statusCode})
+    var status = resp.statusCode
+    if(!((status === 302) && (resp.headers.location === "https://workflowy.com/" || resp.headers.location === "/"))) {
+      if ((300 <= status && status < 600)) {
+        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status})
       }
       if (error = body.error) {
-        return Q.reject({status: resp.statusCode, message: "Error with request " + resp.request.uri.href + ": " + error})
+        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error})
       }
     }
     return arg

@@ -3,6 +3,7 @@ var Workflowy = require('./')
 var exec = require('child_process').exec
 var prompt = require('prompt')
 var fs = require('fs')
+var Q = require('q')
 
 var argv = require('minimist')(process.argv.slice(2))
 
@@ -12,13 +13,12 @@ var rc_path = userhome+"/.wfrc"
 var exists = fs.existsSync(rc_path)
 var rc = exists && fs.readFileSync(rc_path, 'utf8')
 
-
 function handleErr(reason) {
   while (reason.reason) {reason = reason.reason}
   console.log("Error " + reason.status + ": ", reason.message)
   if (reason.status == 404) {
     console.log("It seems your sessionid has expired. Let's log you in again.")
-    auth()
+    return auth()
   } else {
     process.exit(1)
   }
@@ -83,7 +83,6 @@ if (argv.help) {
 } else if (rc && regex.sessionid.test(rc)) {
   var sessionid = rc.match(regex.sessionid)[1]
   var wf = new Workflowy({sessionid: sessionid})
-  var wf = new Workflowy({sessionid: '8abc92b5fb7c510ec181aab35b8f5746'})
 
   var command = argv._[0]
   if (command === 'capture') { console.log("• • • creating workflowy node • • •")
@@ -150,6 +149,7 @@ function auth () {
       }
     }
   }
+  var deferred = Q.defer()
   prompt.start()
   prompt.get(schema, function (err, result) {
     if (err) {console.log('CANCELLED'); return}
@@ -157,15 +157,19 @@ function auth () {
     wf._login.then(function () {
       if (wf.sessionid) {
         console.log("Login successful.")
-        fs.writeFile(rc_path, "sessionid: "+wf.sessionid+"\n", function (errf) {
-          if (errf) {
-            return console.log("Failed to write sessionid to ~/.wfrc")
-          }
+        try {
+          fs.writeFileSync(rc_path, "sessionid: "+wf.sessionid+"\n")
           console.log("Successfully wrote sessionid to ~/.wfrc")
-        })
+          deferred.resolve("Successfully wrote sessionid to ~/.wfrc")
+        } catch (e) {
+          return console.log("Failed to write sessionid to ~/.wfrc")
+          deferred.reject(new Error("Failed to write sessionid to ~/.wfrc"))
+        }
       } else {
         console.log("Failed to get sessionid. Check your username/password.")
+        deferred.reject(new Error("Failed to get sessionid"))
       }
     }, handleErr).fin(exit)
   })
+  return deferred.promise
 }
