@@ -30,7 +30,8 @@ module.exports = Workflowy = (function() {
   Workflowy.clientVersion = 18
 
   Workflowy.urls = {
-    login: 'https://workflowy.com/accounts/login/',
+    login: 'https://workflowy.com/ajax_login',
+    // login: 'https://workflowy.com/accounts/login/',
     meta: "https://workflowy.com/get_initialization_data?client_version=" + Workflowy.clientVersion,
     update: 'https://workflowy.com/push_and_poll'
   }
