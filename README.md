@@ -9,7 +9,9 @@ This is super early stage! Currently the main advantages it has over [the origin
 
 Also this project is in JavaScript, so if you prefer that to working in CoffeeScript, you've come to the right place.
 
-[![bitHound Score](https://www.bithound.io/github/malcolmocean/opusfluxus/badges/score.svg)](https://www.bithound.io/github/malcolmocean/opusfluxus)
+## Changelog
+
+- Breaking change made from 0.4.x to 0.5.0 - the previous set-up would result in unhandled promise rejections in the constructor if login failed or sessionid was expired. Now refresh is no longer called in the constructor, so you have to call it manually (thus you can handle the promise yourself).
 
 ## Install to your node project
 

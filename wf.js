@@ -156,6 +156,7 @@ function auth () {
     var wf = new Workflowy({username: result.email, password: result.password})
     wf._login.then(function () {
       if (wf.sessionid) {
+        console.log("wf.sessionid", wf.sessionid)
         console.log("Login successful.")
         try {
           fs.writeFileSync(rc_path, "sessionid: "+wf.sessionid+"\n")

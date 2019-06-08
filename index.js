@@ -37,7 +37,6 @@ module.exports = Workflowy = (function() {
   }
 
   function Workflowy(auth, jar) {
-    var self = this
     this.jar = jar ? request.jar(jar) : request.jar()
     this.request = request.defaults({
       jar: this.jar,
@@ -48,34 +47,37 @@ module.exports = Workflowy = (function() {
       this.username = auth.username
       this.password = auth.password
       this._lastTransactionId = null
-      this._login = Q.ninvoke(this.request, 'post', {
+    }
+  }
+
+  Workflowy.prototype.login = function () {
+    if (!this.sessionid) {
+      return Q.ninvoke(this.request, 'post', {
         url: Workflowy.urls.login,
         form: {
           username: this.username,
           password: this.password
         }
       }).then(utils.httpAbove299toError)
-      .then(function (arg) {
+      .then(arg => {
         var body = arg[1]
         if (/Please enter a correct username and password./.test(body)) {
           return Q.reject({status: 403, message: "Incorrect login info"})
         }
-      }).then(function(arg) {
-        var jar = self.jar._jar.toJSON()
+      }).then(arg => {
+        var jar = this.jar._jar.toJSON()
         for (c in jar.cookies) {
           if (jar.cookies[c].key === 'sessionid') {
-            self.sessionid = jar.cookies[c].value
+            this.sessionid = jar.cookies[c].value
             break
           }
         }
-      }, function (err) {
-        return Q.reject(err)
-      })
+      }, err => Q.reject(err))
     }
-    this.refresh()
+    return this.refresh()
   }
 
-  Workflowy.prototype.refresh = function() {
+  Workflowy.prototype.refresh = function () {
     function meta (_this) {
       return function() {
         var opts = {
@@ -100,7 +102,7 @@ module.exports = Workflowy = (function() {
     if (this.sessionid) {
       this.meta = Q.when(true, meta(this))
     } else {
-      this.meta = this._login.then(meta(this))
+      this.meta = this.login().then(meta(this))
     }
     this.outline = this.meta.then((function(_this) {
       return function(body) {
