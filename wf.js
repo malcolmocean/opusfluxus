@@ -24,21 +24,54 @@ function handleErr(reason) {
   }
 }
 
+function loadAliases() {
+  try {
+    fs.writeFileSync('./aliases.json', '{}', { flag: 'wx' }, function (err) {
+      if (err) console.log('err')
+      console.log("It's saved!");
+    });
+  } catch (err) {}
+  const aliases = fs.readFileSync('./aliases.json', 'utf8')
+  try {
+    return JSON.parse(aliases)
+  } catch(err) {
+    console.log('Error parsing JSON string:', err)
+    return {}
+  }
+}
+
+function writeAliases() {
+  fs.writeFileSync('./aliases.json', JSON.stringify(aliases), err => {
+    if (err) {
+        console.log('Could not write alias file.', err)
+    }
+  })
+}
+
 function printHelp () {
   console.log("usage: wf <command> [<args>]\n")
   console.log("The commands currently available are:\n")
-  console.log("  tree n             "+"print your workflowy nodes up to depth n (default: 2)")
-  console.log("    [--id=<id>]          "+"print sub nodes under the <id> (default: whole tree)")
-  console.log("    [--withnote]         "+"print the note of nodes (default: false)")
-  console.log("    [--hiddencompleted]  "+"hide the completed lists (default: false)")
-  console.log("    [--withid]           "+"print id of nodes (default: false)")
+  console.log(" tree n                     "+"print your workflowy nodes up to depth n (default: 2)")
+  console.log("   [--id=<id/alias>]           "+"print sub nodes under the <id> (default: whole tree)")
+  console.log("   [--withnote]                "+"print the note of nodes (default: false)")
+  console.log("   [--hiddencompleted]         "+"hide the completed lists (default: false)")
+  console.log("   [--withid]                  "+"print id of nodes (default: false)")
   console.log("")
-  console.log("  capture            "+"add something to a particular node")
-  console.log("     --parentid=<id>      "+"<36-digit uuid of parent> (required)")
-  console.log("     --name=<str>         "+"what to actually put on the node")
-  console.log("    [--priority=#]        "+"0 as first child, 1 as second (default 0 (top))")
-  console.log("                          "+"    (use a number like 10000 for bottom)")
-  console.log("    [--note=<str>]        "+"a note for the node (default '')")
+  console.log(" capture                    "+"add something to a particular node")
+  console.log("    --parentid=<id/alias>       "+"36-digit uuid of parent (required) or defined alias")
+  console.log("    --name=<str>                "+"what to actually put on the node (required)")
+  console.log("   [--priority=<int>]               "+"0 as first child, 1 as second (default 0 (top))")
+  console.log("                                "+"    (use a number like 10000 for bottom)")
+  console.log("   [--note=<str>]               "+"a note for the node (default '')")
+  console.log("")
+  console.log(" alias                      "+"list all curretnly defined aliases")
+  console.log("")
+  console.log(" alias add                  "+"add new alias")
+  console.log("    --id=<id>                   "+"36-digit uuid to alias (required)")
+  console.log("    --name=<alias>              "+"name to give the alias (required)")
+  console.log("")
+  console.log(" alias remove               "+"remove existing alias")
+  console.log("    --name=<str>                "+"name to give the alias (required)")
   console.log("")
 }
 
@@ -46,6 +79,7 @@ var withnote = false
 var hiddencompleted = false 
 var withid = false
 var id = null
+var aliases = loadAliases()
 
 function recursivePrint (node, prefix, spaces, maxDepth) {
   if (hiddencompleted && node.cp) {return}
@@ -73,11 +107,21 @@ function exit () {
   process.exit()
 }
 
+function apply_alias(id) {
+  if (id != undefined && !id.match("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")) {
+    // id not uuid, used alias
+    return aliases[id]
+  }
+  return id
+}
+
 var regex = {
   sessionid: /sessionid: (\w+)/
 }
 
-console.log("~~~~~~~~~~~~~~~~~ ")
+console.log("~~~~~~~~~~~~~~~~~")
+
+
 if (argv.help) {
   printHelp()
 } else if (rc && regex.sessionid.test(rc)) {
@@ -85,20 +129,26 @@ if (argv.help) {
   var wf = new Workflowy({sessionid: sessionid})
 
   var command = argv._[0]
-  if (command === 'capture') { console.log("• • • creating workflowy node • • •")
-    var parentid = argv.parentid
+  if (command === 'capture') {
+
+    console.log("• • • creating workflowy node • • •")
+    var parentid = apply_alias(argv.parentid)
     var priority = argv.priority
     var name = argv.name
     var note = argv.note
     wf.create(parentid, name, priority, note).then(function (result) {
       console.log("created!")
     }, handleErr).fin(exit)
-  } else if (command === 'tree') { console.log("• • • fetching workflowy tree • • •")
+
+  } else if (command === 'tree') {
+
+    console.log("• • • fetching workflowy tree • • •")
     depth = argv.depth || argv._[1] || 2
-    id = argv.id
+    id = apply_alias(argv.id)
     withnote = argv.withnote
     hiddencompleted = argv.hiddencompleted
     withid = argv.withid
+
     if (id) {
       wf.nodes.then(function (nodes) {
         var node = nodes.find(function (node) {
@@ -120,7 +170,35 @@ if (argv.help) {
         recursivePrint(rootnode, null, '', depth)
       }, handleErr).fin(exit)
     }
-  } else { console.log("• • • fetching workflowy data • • •")
+  } else if (command === 'alias') {
+
+    verb = argv._[1]
+    if (aliases === undefined) {
+      aliases = loadAliases()
+      console.log(aliases)
+      if (aliases === undefined) {
+        aliases = {}
+      }
+    }
+
+    if (verb === 'add') {
+      aliases[argv.name] = argv.id
+      writeAliases()
+      console.log("Added new alias '" + argv.name + "' for id '" + argv.id + "'")
+    } else if (verb === 'remove') {
+      delete aliases[argv.name]
+      writeAliases()
+      console.log("Removed alias for name '" + argv.name + "'")
+    } else {
+      console.log(aliases)
+    }
+    exit()
+
+  } else {
+
+    console.log("• • • fetching workflowy data • • •")
+
+
     wf.meta.then(function (meta) {
       console.log("logged in as " + meta.settings.username)
       console.log(meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren.length + " top-level nodes")
