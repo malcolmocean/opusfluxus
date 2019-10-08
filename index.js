@@ -1,7 +1,7 @@
-var Q = require('q')
-request = require('request')
-var querystring = require('querystring')
-var uuidv4 = require('uuid/v4')
+const Q = require('q')
+const request = require('request')
+const querystring = require('querystring')
+const uuidv4 = require('uuid/v4')
 
 var utils = {
   getTimestamp: function(meta) {
@@ -16,10 +16,10 @@ var utils = {
     var status = resp.statusCode
     if(!((status === 302) && (resp.headers.location === "https://workflowy.com/" || resp.headers.location === "/"))) {
       if ((300 <= status && status < 600)) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status})
+        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status, body: body})
       }
       if (error = body.error) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error})
+        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error, body: body})
       }
     }
     return arg
@@ -30,7 +30,8 @@ module.exports = Workflowy = (function() {
   Workflowy.clientVersion = 18
 
   Workflowy.urls = {
-    login: 'https://workflowy.com/ajax_login',
+    newAuth: 'https://workflowy.com/api/auth',
+    // login: 'https://workflowy.com/ajax_login',
     // login: 'https://workflowy.com/accounts/login/',
     meta: "https://workflowy.com/get_initialization_data?client_version=" + Workflowy.clientVersion,
     update: 'https://workflowy.com/push_and_poll'
@@ -44,21 +45,37 @@ module.exports = Workflowy = (function() {
     })
     this.sessionid = auth.sessionid
     if (!this.sessionid) {
-      this.username = auth.username
-      this.password = auth.password
+      this.username = auth.username || auth.email
+      this.password = auth.password || ''
+      this.code = auth.code || ''
       this._lastTransactionId = null
     }
+  }
+
+  Workflowy.prototype.getAuthType = function (email) {
+    return Q.ninvoke(this.request, 'post', {
+      url: Workflowy.urls.newAuth,
+      form: {
+        email: email,
+        allowSignup: false
+      }
+    }).then(utils.httpAbove299toError)
+    .then(result => {
+      return result[1].authType
+    })
   }
 
   Workflowy.prototype.login = function () {
     if (!this.sessionid) {
       return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.login,
+        url: Workflowy.urls.newAuth,
         form: {
-          username: this.username,
-          password: this.password
+          email: this.username,
+          password: this.password || '',
+          code: this.code || '',
         }
-      }).then(utils.httpAbove299toError)
+      })
+      .then(utils.httpAbove299toError)
       .then(arg => {
         var body = arg[1]
         if (/Please enter a correct username and password./.test(body)) {
