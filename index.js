@@ -52,12 +52,12 @@ module.exports = Workflowy = (function() {
     }
   }
 
-  Workflowy.prototype.getAuthType = function (email) {
+  Workflowy.prototype.getAuthType = function (email, options={}) {
     return Q.ninvoke(this.request, 'post', {
       url: Workflowy.urls.newAuth,
       form: {
         email: email,
-        allowSignup: false
+        allowSignup: options.allowSignup || false,
       }
     }).then(utils.httpAbove299toError)
     .then(result => {
