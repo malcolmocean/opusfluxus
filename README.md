@@ -14,7 +14,9 @@ Also this project is in JavaScript, so if you prefer that to working in CoffeeSc
 
 ## Changelog
 
-- Added a new getAuthType function, that takes an email and returns `"password"`, or `"code"` (it might also return `"google"` but it also seems maybe they removed it).
+- 2019-10-08:
+  - Added new `createTree` and `createTrees` functions
+  - Added a new `getAuthType(email)` function, that takes an email and returns `"password"`, or `"code"` (it might also return `"google"` but it also seems maybe they removed it).
 - Breaking change made from 0.4.x to 0.5.0 - the previous set-up would result in unhandled promise rejections in the constructor if login failed or sessionid was expired. Now refresh is no longer called in the constructor, so you have to call it manually (thus you can handle the promise yourself).
 
 ## Install to your node project

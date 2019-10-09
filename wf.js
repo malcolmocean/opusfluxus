@@ -116,6 +116,31 @@ if (argv.help) {
         recursivePrint(rootnode, null, '', depth)
       }, handleErr).fin(() => process.exit())
     }
+  } else if (command === 'create_tree_demo') {
+    console.log("🌲 🌲 🌲 create tree demo 🌲 🌲 🌲")
+    wf.createTree('None', {
+      nm: "test " + Math.ceil(100*Math.random()),
+      no: ""+new Date(),
+      ch: [
+        {nm: "this is a child"},
+        {nm: "a what?",
+          ch: [
+            {nm: "a child"},
+            {nm: "a what?",
+              ch: [
+                {nm: "a child"},
+                {nm: "oh, a child"},
+              ],
+            },
+          ],
+        },
+      ],
+    }).then(tree => {
+      console.log("🌲 🌲 🌲   tree created!   🌲 🌲 🌲")
+      console.log(tree) // now with IDs
+    }).catch(err => {
+      console.log("🌲 tree creation err:", err)
+    })
   } else { console.log("• • • fetching workflowy data • • •")
     wf.meta.then(function (meta) {
       console.log("logged in as " + meta.settings.username)

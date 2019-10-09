@@ -305,6 +305,25 @@ module.exports = Workflowy = (function() {
     })(this))
   }
 
+  Workflowy.prototype.createTrees = async function (parentid, nodeArray, priority) {
+    if (typeof parentid !== 'string') {throw new Error( "must provide parentid (use 'None' for top-level)")}
+    for (let node of nodeArray) {
+      await this.createTree(parentid, node, priority)
+    }
+  }
+
+  Workflowy.prototype.createTree = async function (parentid, topNode, priority) {
+    if (typeof parentid !== 'string') {throw new Error( "must provide parentid (use 'None' for top-level)")}
+    return this.create(parentid, topNode.nm, priority, topNode.no)
+    .then(newTopNode => {
+      topNode.id = newTopNode.id
+      if (!topNode.ch || !topNode.ch.length) {
+        return
+      }
+      return this.createTrees(topNode.id, topNode.ch, 1000000)
+    }).then(() => topNode)
+  }
+
   Workflowy.prototype.create = function (parentid, name, priority, note) {
     var projectid = uuidv4()
     var operations = [
@@ -312,7 +331,7 @@ module.exports = Workflowy = (function() {
         type: "create",
         data: {  
           projectid: projectid,
-          parentid: parentid,
+          parentid: parentid || 'None',
           priority: priority || 0 // 0 adds as first child, 1 as second, etc
         },
       },
@@ -327,12 +346,7 @@ module.exports = Workflowy = (function() {
     ]
     return this._update(operations)
     .then(utils.httpAbove299toError)
-    .then((function(_this) {
-      return function(arg) {
-        // TODO: for a local workflowy client
-        //       we'll want to update the local node
-      }
-    })(this))
+    .then(() => ({id: projectid}))
   }
 
   Workflowy.prototype.update = function(nodes, newNames) {
