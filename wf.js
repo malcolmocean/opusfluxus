@@ -103,10 +103,6 @@ function recursivePrint (node, prefix, spaces, maxDepth) {
   }
 }
 
-function exit () {
-  process.exit()
-}
-
 function apply_alias(id) {
   if (id != undefined && !id.match("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")) {
     // id not uuid, used alias
@@ -127,7 +123,7 @@ if (argv.help) {
 } else if (rc && regex.sessionid.test(rc)) {
   var sessionid = rc.match(regex.sessionid)[1]
   var wf = new Workflowy({sessionid: sessionid})
-
+  wf.refresh()
   var command = argv._[0]
   if (command === 'capture') {
 
@@ -138,11 +134,8 @@ if (argv.help) {
     var note = argv.note
     wf.create(parentid, name, priority, note).then(function (result) {
       console.log("created!")
-    }, handleErr).fin(exit)
-
-  } else if (command === 'tree') {
-
-    console.log("• • • fetching workflowy tree • • •")
+    }, handleErr).fin(() => process.exit())
+  } else if (command === 'tree') { console.log("• • • fetching workflowy tree • • •")
     depth = argv.depth || argv._[1] || 2
     id = apply_alias(argv.id)
     withnote = argv.withnote
@@ -159,7 +152,7 @@ if (argv.help) {
         } else {
           console.log('node ' + id + ' not found')
         }
-      }, handleErr).fin(exit)
+      }, handleErr).fin(() => process.exit())
     } else {
       wf.outline.then(function (outline) {
         var rootnode = {
@@ -168,7 +161,7 @@ if (argv.help) {
           id: ''
         }
         recursivePrint(rootnode, null, '', depth)
-      }, handleErr).fin(exit)
+      }, handleErr).fin(() => process.exit())
     }
   } else if (command === 'alias') {
 
@@ -193,12 +186,32 @@ if (argv.help) {
       console.log(aliases)
     }
     exit()
-
-  } else {
-
-    console.log("• • • fetching workflowy data • • •")
-
-
+  } else if (command === 'create_tree_demo') {
+    console.log("🌲 🌲 🌲 create tree demo 🌲 🌲 🌲")
+    wf.createTree('None', {
+      nm: "test " + Math.ceil(100*Math.random()),
+      no: ""+new Date(),
+      ch: [
+        {nm: "this is a child"},
+        {nm: "a what?",
+          ch: [
+            {nm: "a child"},
+            {nm: "a what?",
+              ch: [
+                {nm: "a child"},
+                {nm: "oh, a child"},
+              ],
+            },
+          ],
+        },
+      ],
+    }).then(tree => {
+      console.log("🌲 🌲 🌲   tree created!   🌲 🌲 🌲")
+      console.log(tree) // now with IDs
+    }).catch(err => {
+      console.log("🌲 tree creation err:", err)
+    })
+  } else { console.log("• • • fetching workflowy data • • •")
     wf.meta.then(function (meta) {
       console.log("logged in as " + meta.settings.username)
       console.log(meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren.length + " top-level nodes")
@@ -207,7 +220,7 @@ if (argv.help) {
       } else {
         console.log("(to view commands, run with --help)")
       }
-    }, handleErr).fin(exit)
+    }, handleErr).fin(() => process.exit())
   }
 } else {
   console.log("No ~/.wfrc detected... starting authentication process...")
@@ -220,34 +233,54 @@ function auth () {
     properties: {
       email: {
         required: true
-      },
-      password: {
-        required: true,
-        hidden: true
       }
     }
   }
   var deferred = Q.defer()
+  let wf = new Workflowy({})
   prompt.start()
   prompt.get(schema, function (err, result) {
     if (err) {console.log('CANCELLED'); return}
-    var wf = new Workflowy({username: result.email, password: result.password})
-    wf._login.then(function () {
-      if (wf.sessionid) {
-        console.log("Login successful.")
-        try {
-          fs.writeFileSync(rc_path, "sessionid: "+wf.sessionid+"\n")
-          console.log("Successfully wrote sessionid to ~/.wfrc")
-          deferred.resolve("Successfully wrote sessionid to ~/.wfrc")
-        } catch (e) {
-          return console.log("Failed to write sessionid to ~/.wfrc")
-          deferred.reject(new Error("Failed to write sessionid to ~/.wfrc"))
-        }
-      } else {
-        console.log("Failed to get sessionid. Check your username/password.")
-        deferred.reject(new Error("Failed to get sessionid"))
+    const email = result.email
+    wf.getAuthType(email).then(authType => {
+      if (authType == 'password') {
+        schema = {properties: {
+          password: {
+            required: true,
+            hidden: true
+          }
+        }}
+      } else if (authType == 'code') {
+        console.log(`An email has been sent to ${email} with a login code. Enter that code here:`)
+        schema = {properties: {code: {required: true}}}
       }
-    }, handleErr).fin(exit)
+      prompt.get(schema, function (err, result2) {
+        wf = new Workflowy({username: email, password: result2.password, code: result2.code})
+        wf.login().then(function () {
+          if (wf.sessionid) {
+            deferred.resolve("Successfully wrote sessionid to ~/.wfrc")
+          } else {
+            deferred.reject(new Error("Failed to get sessionid"))
+          }
+        }).catch(err => {
+          console.log("err", err)
+        })
+      })
+    }, err => deferred.reject(err))
   })
-  return deferred.promise
+  return deferred.promise.then(() => {
+    console.log("wf.sessionid", wf.sessionid)
+    console.log("Login successful.")
+    try {
+      fs.writeFileSync(rc_path, "sessionid: "+wf.sessionid+"\n")
+      console.log("Successfully wrote sessionid to ~/.wfrc")
+    } catch (e) {
+      return console.log("Failed to write sessionid to ~/.wfrc")
+    }
+  }, err => {
+    console.log("Failed to get sessionid. Check your username/password.")
+  }).fin(() => {
+    // console.log("reached newAuth fin")
+    process.exit()
+  })
 }

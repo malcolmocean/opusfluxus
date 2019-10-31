@@ -1,7 +1,7 @@
-var Q = require('q')
-request = require('request')
-var querystring = require('querystring')
-var uuidv4 = require('uuid/v4')
+const Q = require('q')
+const request = require('request')
+const querystring = require('querystring')
+const uuidv4 = require('uuid/v4')
 
 var utils = {
   getTimestamp: function(meta) {
@@ -16,10 +16,10 @@ var utils = {
     var status = resp.statusCode
     if(!((status === 302) && (resp.headers.location === "https://workflowy.com/" || resp.headers.location === "/"))) {
       if ((300 <= status && status < 600)) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status})
+        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status, body: body})
       }
       if (error = body.error) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error})
+        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error, body: body})
       }
     }
     return arg
@@ -30,14 +30,14 @@ module.exports = Workflowy = (function() {
   Workflowy.clientVersion = 18
 
   Workflowy.urls = {
-    login: 'https://workflowy.com/ajax_login',
+    newAuth: 'https://workflowy.com/api/auth',
+    // login: 'https://workflowy.com/ajax_login',
     // login: 'https://workflowy.com/accounts/login/',
     meta: "https://workflowy.com/get_initialization_data?client_version=" + Workflowy.clientVersion,
     update: 'https://workflowy.com/push_and_poll'
   }
 
   function Workflowy(auth, jar) {
-    var self = this
     this.jar = jar ? request.jar(jar) : request.jar()
     this.request = request.defaults({
       jar: this.jar,
@@ -45,37 +45,56 @@ module.exports = Workflowy = (function() {
     })
     this.sessionid = auth.sessionid
     if (!this.sessionid) {
-      this.username = auth.username
-      this.password = auth.password
+      this.username = auth.username || auth.email
+      this.password = auth.password || ''
+      this.code = auth.code || ''
       this._lastTransactionId = null
-      this._login = Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.login,
+    }
+  }
+
+  Workflowy.prototype.getAuthType = function (email, options={}) {
+    return Q.ninvoke(this.request, 'post', {
+      url: Workflowy.urls.newAuth,
+      form: {
+        email: email,
+        allowSignup: options.allowSignup || false,
+      }
+    }).then(utils.httpAbove299toError)
+    .then(result => {
+      return result[1].authType
+    })
+  }
+
+  Workflowy.prototype.login = function () {
+    if (!this.sessionid) {
+      return Q.ninvoke(this.request, 'post', {
+        url: Workflowy.urls.newAuth,
         form: {
-          username: this.username,
-          password: this.password
+          email: this.username,
+          password: this.password || '',
+          code: this.code || '',
         }
-      }).then(utils.httpAbove299toError)
-      .then(function (arg) {
+      })
+      .then(utils.httpAbove299toError)
+      .then(arg => {
         var body = arg[1]
         if (/Please enter a correct username and password./.test(body)) {
           return Q.reject({status: 403, message: "Incorrect login info"})
         }
-      }).then(function(arg) {
-        var jar = self.jar._jar.toJSON()
+      }).then(arg => {
+        var jar = this.jar._jar.toJSON()
         for (c in jar.cookies) {
           if (jar.cookies[c].key === 'sessionid') {
-            self.sessionid = jar.cookies[c].value
+            this.sessionid = jar.cookies[c].value
             break
           }
         }
-      }, function (err) {
-        return Q.reject(err)
-      })
+      }, err => Q.reject(err))
     }
-    this.refresh()
+    return this.refresh()
   }
 
-  Workflowy.prototype.refresh = function() {
+  Workflowy.prototype.refresh = function () {
     function meta (_this) {
       return function() {
         var opts = {
@@ -100,7 +119,7 @@ module.exports = Workflowy = (function() {
     if (this.sessionid) {
       this.meta = Q.when(true, meta(this))
     } else {
-      this.meta = this._login.then(meta(this))
+      this.meta = this.login().then(meta(this))
     }
     this.outline = this.meta.then((function(_this) {
       return function(body) {
@@ -286,6 +305,25 @@ module.exports = Workflowy = (function() {
     })(this))
   }
 
+  Workflowy.prototype.createTrees = async function (parentid, nodeArray, priority) {
+    if (typeof parentid !== 'string') {throw new Error( "must provide parentid (use 'None' for top-level)")}
+    for (let node of nodeArray) {
+      await this.createTree(parentid, node, priority)
+    }
+  }
+
+  Workflowy.prototype.createTree = async function (parentid, topNode, priority) {
+    if (typeof parentid !== 'string') {throw new Error( "must provide parentid (use 'None' for top-level)")}
+    return this.create(parentid, topNode.nm, priority, topNode.no)
+    .then(newTopNode => {
+      topNode.id = newTopNode.id
+      if (!topNode.ch || !topNode.ch.length) {
+        return
+      }
+      return this.createTrees(topNode.id, topNode.ch, 1000000)
+    }).then(() => topNode)
+  }
+
   Workflowy.prototype.create = function (parentid, name, priority, note) {
     var projectid = uuidv4()
     var operations = [
@@ -293,7 +331,7 @@ module.exports = Workflowy = (function() {
         type: "create",
         data: {  
           projectid: projectid,
-          parentid: parentid,
+          parentid: parentid || 'None',
           priority: priority || 0 // 0 adds as first child, 1 as second, etc
         },
       },
@@ -308,12 +346,7 @@ module.exports = Workflowy = (function() {
     ]
     return this._update(operations)
     .then(utils.httpAbove299toError)
-    .then((function(_this) {
-      return function(arg) {
-        // TODO: for a local workflowy client
-        //       we'll want to update the local node
-      }
-    })(this))
+    .then(() => ({id: projectid}))
   }
 
   Workflowy.prototype.update = function(nodes, newNames) {
