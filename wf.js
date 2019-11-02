@@ -49,7 +49,12 @@ function writeWfConfig(wfConfig) {
 }
 
 function loadAliases() {
-  return loadWfConfig().aliases
+  aliases = loadWfConfig().aliases
+  if (aliases === undefined) {
+    return {}
+  } else {
+    return aliases
+  }
 }
 
 function writeAliases(aliases) {
@@ -201,7 +206,6 @@ if (argv.help) {
     } else {
       console.log(aliases)
     }
-    exit()
   } else if (command === 'create_tree_demo') {
     console.log("🌲 🌲 🌲 create tree demo 🌲 🌲 🌲")
     wf.createTree('None', {
