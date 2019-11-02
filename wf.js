@@ -8,7 +8,7 @@ var Q = require('q')
 var argv = require('minimist')(process.argv.slice(2))
 
 var userhome = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME']
-var rc_path = userhome+"/.wfrc"
+var rc_path = userhome+"/.wfconfig.json"
 
 var exists = fs.existsSync(rc_path)
 var rc = exists && fs.readFileSync(rc_path, 'utf8')
@@ -24,28 +24,48 @@ function handleErr(reason) {
   }
 }
 
-function loadAliases() {
+function loadWfConfig() {
   try {
-    fs.writeFileSync('./aliases.json', '{}', { flag: 'wx' }, function (err) {
+    fs.writeFileSync(rc_path, '{}', { flag: 'wx' }, function (err) {
       if (err) console.log('err')
       console.log("It's saved!");
     });
   } catch (err) {}
-  const aliases = fs.readFileSync('./aliases.json', 'utf8')
+  const wfConfig = fs.readFileSync(rc_path, 'utf8')
   try {
-    return JSON.parse(aliases)
+    return JSON.parse(wfConfig)
   } catch(err) {
     console.log('Error parsing JSON string:', err)
     return {}
   }
 }
 
-function writeAliases() {
-  fs.writeFileSync('./aliases.json', JSON.stringify(aliases), err => {
+function writeWfConfig(wfConfig) {
+  fs.writeFileSync(rc_path, JSON.stringify(wfConfig), err => {
     if (err) {
-        console.log('Could not write alias file.', err)
+        console.log('Could not write wfconfig file.', err)
     }
   })
+}
+
+function loadAliases() {
+  return loadWfConfig().aliases
+}
+
+function writeAliases(aliases) {
+  wfConfig = loadWfConfig()
+  wfConfig.aliases = aliases
+  writeWfConfig(wfConfig)
+}
+
+function loadSessionid() {
+  return loadWfConfig().sessionid
+}
+
+function writeSessionid(sessionid) {
+  wfConfig = loadWfConfig()
+  wfConfig.sessionid = sessionid
+  writeWfConfig(wfConfig)
 }
 
 function printHelp () {
@@ -111,17 +131,13 @@ function apply_alias(id) {
   return id
 }
 
-var regex = {
-  sessionid: /sessionid: (\w+)/
-}
-
 console.log("~~~~~~~~~~~~~~~~~")
 
+var sessionid = loadSessionid()
 
 if (argv.help) {
   printHelp()
-} else if (rc && regex.sessionid.test(rc)) {
-  var sessionid = rc.match(regex.sessionid)[1]
+} else if (rc && sessionid) {
   var wf = new Workflowy({sessionid: sessionid})
   wf.refresh()
   var command = argv._[0]
@@ -168,7 +184,7 @@ if (argv.help) {
     verb = argv._[1]
     if (aliases === undefined) {
       aliases = loadAliases()
-      console.log(aliases)
+      // console.log(aliases)
       if (aliases === undefined) {
         aliases = {}
       }
@@ -176,11 +192,11 @@ if (argv.help) {
 
     if (verb === 'add') {
       aliases[argv.name] = argv.id
-      writeAliases()
+      writeAliases(aliases)
       console.log("Added new alias '" + argv.name + "' for id '" + argv.id + "'")
     } else if (verb === 'remove') {
       delete aliases[argv.name]
-      writeAliases()
+      writeAliases(aliases)
       console.log("Removed alias for name '" + argv.name + "'")
     } else {
       console.log(aliases)
@@ -272,10 +288,10 @@ function auth () {
     console.log("wf.sessionid", wf.sessionid)
     console.log("Login successful.")
     try {
-      fs.writeFileSync(rc_path, "sessionid: "+wf.sessionid+"\n")
-      console.log("Successfully wrote sessionid to ~/.wfrc")
+          writeSessionid(wf.sessionid)
+          console.log("Successfully wrote sessionid to " + rc_path)
     } catch (e) {
-      return console.log("Failed to write sessionid to ~/.wfrc")
+          return console.log("Failed to write sessionid to " + rc_path)
     }
   }, err => {
     console.log("Failed to get sessionid. Check your username/password.")
