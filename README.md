@@ -1,4 +1,5 @@
 # opusfluxus
+
 NodeJS wrapper for WorkFlowy. Created for integration with [Complice](https://complice.co), a productivity app that's less "what are all the parts of this thing I have to do?" and more ***"what am I going to do today?"***
 
 This was forked from [ruxi/workflowy](https://github.com/ruxi/workflowy), and improvements are:
@@ -7,6 +8,7 @@ This was forked from [ruxi/workflowy](https://github.com/ruxi/workflowy), and im
 - it has a primitive command-line interface
 - it supports creating new nodes, which allows you to easily capture items to your workflowy :D
 - it supports auth by sessionid cookie, meaning you don't need to store the user's password in plaintext anywhere. highly recommended *(EDIT: it seems the original might allow this using some sort of "cookie jar", but I don't know how that's supposed to work.)*
+- you can define aliases to reference often used nodes for insertion
 
 Also this project is in JavaScript, so if you prefer that to working in CoffeeScript, you've come to the right place.
 
@@ -42,11 +44,11 @@ Currently only has two features. One is to print your list (`wf tree 1` prints j
 Thanks to [sujunmin](https://github.com/sujunmin) this now has a bunch of options:
 
 ```bash
-tree [n]             print your workflowy nodes up to depth n (default: 2)
-  --id=<id>            print sub nodes under the <id> (default: whole tree)
-  --withnote           print the note of nodes (default: false)
-  --hiddencompleted    hide the completed lists (default: false)
-  --withid             print id of nodes (default: false)
+tree [n]                     print your workflowy nodes up to depth n (default: 2)
+   [--id=<id/alias>]           print sub nodes under the <id> (default: whole tree)
+   [--withnote]                print the note of nodes (default: false)
+   [--hiddencompleted]         hide the completed lists (default: false)
+   [--withid]                  print id of nodes (default: false)
 ```
 
 #### Capture/append
@@ -56,13 +58,12 @@ Use Workflowy for tasks but wish you had a quicker way to capture things to your
 The command is `capture`, and here's the spec:
 
 ```bash
-capture            add something to a particular node
-   --parentid=<id>      <36-digit uuid of parent> (required)
-   --name=<str>         what to actually put on the node
-  [--priority=#]        0 as first child, 1 as second (default 0 (top))
-                            (use a number like 10000 for bottom)
-  [--note=<str>]        a note for the node (default '')
-
+capture                      add something to a particular node
+    --parentid=<id/alias>      36-digit uuid of parent (required) or defined alias
+    --name=<str>               what to actually put on the node (required)
+   [--priority=<int>]          0 as first child, 1 as second (default 0 (top))
+                                 (use a number like 10000 for bottom)
+   [--note=<str>]              a note for the node (default '')
 ```
 
 `wf capture --parentid "<36-digit uuid>" --priority=0 --name ""`
@@ -86,3 +87,28 @@ alias win="wf capture --parentid='00000000-0000-0000-0000-000000000000' --name"
 So then I just open terminal and type `win "1) call Benjamin #thursday"
 
 Oh, and by the way, that task then gets automatically pulled onto thursday's todo list, thanks to [Complice](https://complice.co/and/workflowy).
+
+#### Aliases
+
+Always giving the parentid as an uuid might not be convenient, so you can also add aliases for them.
+
+``` console
+alias                      list all currently defined aliases
+
+alias add                  add new alias
+    --id=<id>                   36-digit uuid to alias (required)
+    --name=<alias>              name to give the alias (required)
+
+alias remove               remove existing alias
+    --name=<str>                name to give the alias (required)
+```
+
+For an easier configuration, you can put a file `aliases.json` in the folder you will call opusfluxus from 🙂
+
+``` json
+{
+   "inbox": "00000000-0000-0000-0000-000000000000",
+   "todo": "00000000-0000-0000-0000-000000000000",
+   "reccomendations": "00000000-0000-0000-0000-000000000000"
+}
+```

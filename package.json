@@ -1,6 +1,6 @@
 {
   "name": "opusfluxus",
-  "version": "0.6.3",
+  "version": "0.7.0",
   "description": "NodeJS wrapper for Workflowy (+ terminal client)",
   "main": "index.js",
   "scripts": {
@@ -19,7 +19,8 @@
   ],
   "author": "Malcolm Ocean <malcolm@malcolmocean.com> (http://malcolmocean.com/)",
   "contributors": [
-    "Mike Robertson"
+    "Mike Robertson",
+    "Carolin Brandt"
   ],
   "license": "MIT",
   "bugs": {
