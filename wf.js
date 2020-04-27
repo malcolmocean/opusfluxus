@@ -1,77 +1,70 @@
 #! /usr/bin/env node
-var Workflowy = require('./')
-var exec = require('child_process').exec
-var prompt = require('prompt')
-var fs = require('fs')
-var Q = require('q')
+const Workflowy = require('./')
+const prompt = require('prompt')
+const fs = require('fs')
+const Q = require('q')
 
-var argv = require('minimist')(process.argv.slice(2))
-
-var userhome = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME']
-var rc_path = userhome+"/.wfconfig.json"
-
-var exists = fs.existsSync(rc_path)
-var rc = exists && fs.readFileSync(rc_path, 'utf8')
+const argv = require('minimist')(process.argv.slice(2))
 
 function handleErr(reason) {
   while (reason.reason) {reason = reason.reason}
-  console.log("Error " + reason.status + ": ", reason.message)
   if (reason.status == 404) {
     console.log("It seems your sessionid has expired. Let's log you in again.")
     return auth()
   } else {
+    console.log("Error " + reason.status + ": ", reason.message)
     process.exit(1)
   }
 }
 
+const userhome = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME']
+const config_path = userhome+"/.wfconfig.json"
+
+function tryConvertingWfrcFile () {
+  const rc_path = userhome+"/.wfrc"
+  const rc = fs.existsSync(rc_path) && fs.readFileSync(rc_path, 'utf8')
+  rc_regex = /sessionid: (\w+)/
+  if (rc && rc_regex.test(rc)) {
+    return rc.match(rc_regex)[1]
+  }
+}
+
 function loadWfConfig() {
-  try {
-    fs.writeFileSync(rc_path, '{}', { flag: 'wx' }, function (err) {
-      if (err) console.log('err')
-      console.log("It's saved!");
-    });
-  } catch (err) {}
-  const wfConfig = fs.readFileSync(rc_path, 'utf8')
-  try {
-    return JSON.parse(wfConfig)
-  } catch(err) {
-    console.log('Error parsing JSON string:', err)
-    return {}
-  }
-}
-
-function writeWfConfig(wfConfig) {
-  fs.writeFileSync(rc_path, JSON.stringify(wfConfig), err => {
-    if (err) {
-        console.log('Could not write wfconfig file.', err)
+  let exists = fs.existsSync(config_path)
+  let config = {aliases: {}}
+  if (fs.existsSync(config_path)) {
+    let configString = fs.readFileSync(config_path, 'utf8')
+    try {
+      return JSON.parse(configString)
+    } catch(err) {
+      console.log('Error parsing JSON string:', err)
+      return {aliases: {}}
     }
-  })
-}
-
-function loadAliases() {
-  aliases = loadWfConfig().aliases
-  if (aliases === undefined) {
-    return {}
   } else {
-    return aliases
+    let sessionid = tryConvertingWfrcFile()
+    if (sessionid) {
+      config.sessionid = sessionid
+      try {
+        console.log("would unlink here")
+        // fs.unlinkSync(userhome+"/.wfrc")
+      } catch (err) {}
+    }
+    fs.writeFileSync(config_path, JSON.stringify(config))
+    return config
   }
 }
 
-function writeAliases(aliases) {
-  wfConfig = loadWfConfig()
-  wfConfig.aliases = aliases
-  writeWfConfig(wfConfig)
+function writeWfConfig() {
+  console.log("config", config)
+  try {
+    fs.writeFileSync(config_path, JSON.stringify(config))
+  } catch (err) {
+    console.log('Could not write wfconfig file.', err)
+  }
 }
 
-function loadSessionid() {
-  return loadWfConfig().sessionid
-}
-
-function writeSessionid(sessionid) {
-  wfConfig = loadWfConfig()
-  wfConfig.sessionid = sessionid
-  writeWfConfig(wfConfig)
-}
+const config = loadWfConfig()
+const aliases = config.aliases
 
 function printHelp () {
   console.log("usage: wf <command> [<args>]\n")
@@ -104,7 +97,6 @@ var withnote = false
 var hiddencompleted = false 
 var withid = false
 var id = null
-var aliases = loadAliases()
 
 function recursivePrint (node, prefix, spaces, maxDepth) {
   if (hiddencompleted && node.cp) {return}
@@ -138,22 +130,35 @@ function apply_alias(id) {
 
 console.log("~~~~~~~~~~~~~~~~~")
 
-var sessionid = loadSessionid()
-
-if (argv.help) {
-  printHelp()
-} else if (rc && sessionid) {
-  var wf = new Workflowy({sessionid: sessionid})
-  wf.refresh()
+function runCommand () {
   var command = argv._[0]
-  if (command === 'capture') {
 
+  if (command === 'alias') {
+    verb = argv._[1]
+    if (verb === 'add') {
+      aliases[argv.name] = argv.id
+      writeWfConfig()
+      console.log("Added new alias '" + argv.name + "' for id '" + argv.id + "'")
+    } else if (verb === 'remove') {
+      delete aliases[argv.name]
+      writeWfConfig()
+      console.log("Removed alias for name '" + argv.name + "'")
+    } else {
+      console.log(aliases)
+    }
+    return
+  }
+
+  var wf = new Workflowy({sessionid: config.sessionid})
+  wf.refresh()
+  if (command === 'capture') {
     console.log("• • • creating workflowy node • • •")
     var parentid = apply_alias(argv.parentid)
+    parentid && console.log("parentid", parentid)
     var priority = argv.priority
     var name = argv.name
     var note = argv.note
-    wf.create(parentid, name, priority, note).then(function (result) {
+    return wf.create(parentid, name, priority, note).then(function (result) {
       console.log("created!")
     }, handleErr).fin(() => process.exit())
   } else if (command === 'tree') { console.log("• • • fetching workflowy tree • • •")
@@ -164,7 +169,7 @@ if (argv.help) {
     withid = argv.withid
 
     if (id) {
-      wf.nodes.then(function (nodes) {
+      return wf.nodes.then(function (nodes) {
         var node = nodes.find(function (node) {
           return node.id == id
         })
@@ -175,7 +180,7 @@ if (argv.help) {
         }
       }, handleErr).fin(() => process.exit())
     } else {
-      wf.outline.then(function (outline) {
+      return wf.outline.then(function (outline) {
         var rootnode = {
           nm: 'root',
           ch: outline,
@@ -184,31 +189,9 @@ if (argv.help) {
         recursivePrint(rootnode, null, '', depth)
       }, handleErr).fin(() => process.exit())
     }
-  } else if (command === 'alias') {
-
-    verb = argv._[1]
-    if (aliases === undefined) {
-      aliases = loadAliases()
-      // console.log(aliases)
-      if (aliases === undefined) {
-        aliases = {}
-      }
-    }
-
-    if (verb === 'add') {
-      aliases[argv.name] = argv.id
-      writeAliases(aliases)
-      console.log("Added new alias '" + argv.name + "' for id '" + argv.id + "'")
-    } else if (verb === 'remove') {
-      delete aliases[argv.name]
-      writeAliases(aliases)
-      console.log("Removed alias for name '" + argv.name + "'")
-    } else {
-      console.log(aliases)
-    }
   } else if (command === 'create_tree_demo') {
     console.log("🌲 🌲 🌲 create tree demo 🌲 🌲 🌲")
-    wf.createTree('None', {
+    return wf.createTree('None', {
       nm: "test " + Math.ceil(100*Math.random()),
       no: ""+new Date(),
       ch: [
@@ -230,9 +213,9 @@ if (argv.help) {
       console.log(tree) // now with IDs
     }).catch(err => {
       console.log("🌲 tree creation err:", err)
-    })
+    }).fin(() => process.exit())
   } else { console.log("• • • fetching workflowy data • • •")
-    wf.meta.then(function (meta) {
+    return wf.meta.then(function (meta) {
       console.log("logged in as " + meta.settings.username)
       console.log(meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren.length + " top-level nodes")
       if (command === 'meta') {
@@ -242,8 +225,14 @@ if (argv.help) {
       }
     }, handleErr).fin(() => process.exit())
   }
+}
+
+if (argv.help) {
+  printHelp()
+} else if (config && config.sessionid) {
+  runCommand()
 } else {
-  console.log("No ~/.wfrc detected... starting authentication process...")
+  console.log("No "+config_path+" detected... starting authentication process...")
   auth()
 }
 
@@ -278,7 +267,7 @@ function auth () {
         wf = new Workflowy({username: email, password: result2.password, code: result2.code})
         wf.login().then(function () {
           if (wf.sessionid) {
-            deferred.resolve("Successfully wrote sessionid to ~/.wfrc")
+            deferred.resolve("Successfully wrote sessionid to " + config_path)
           } else {
             deferred.reject(new Error("Failed to get sessionid"))
           }
@@ -289,18 +278,20 @@ function auth () {
     }, err => deferred.reject(err))
   })
   return deferred.promise.then(() => {
-    console.log("wf.sessionid", wf.sessionid)
+    // console.log("wf.sessionid", wf.sessionid)
     console.log("Login successful.")
     try {
-          writeSessionid(wf.sessionid)
-          console.log("Successfully wrote sessionid to " + rc_path)
+      config.sessionid = wf.sessionid
+      writeWfConfig()
+      console.log("Successfully wrote sessionid to " + config_path)
     } catch (e) {
-          return console.log("Failed to write sessionid to " + rc_path)
+      return console.log("Failed to write sessionid to " + config_path)
     }
   }, err => {
     console.log("Failed to get sessionid. Check your username/password.")
   }).fin(() => {
+    return runCommand()
     // console.log("reached newAuth fin")
-    process.exit()
+    // process.exit()
   })
 }
