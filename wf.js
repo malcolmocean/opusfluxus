@@ -1,10 +1,55 @@
 #! /usr/bin/env node
 
+const fs = require('fs')
+const userhome = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME']
+const config_path = userhome+"/.wfconfig.json"
+function loadWfConfig() {
+  let exists = fs.existsSync(config_path)
+  let config = {aliases: {}}
+  if (fs.existsSync(config_path)) {
+    let configString = fs.readFileSync(config_path, 'utf8')
+    try {
+      return JSON.parse(configString)
+    } catch(err) {
+      console.log('Error parsing JSON string:', err)
+      return {aliases: {}}
+    }
+  } else {
+    let sessionid = tryConvertingWfrcFile()
+    if (sessionid) {
+      config.sessionid = sessionid
+      try {
+        console.log("would unlink here")
+        // fs.unlinkSync(userhome+"/.wfrc")
+      } catch (err) {}
+    }
+    fs.writeFileSync(config_path, JSON.stringify(config))
+    return config
+  }
+}
+
+function writeWfConfig(config) {
+  // console.log("config", config)
+  try {
+    fs.writeFileSync(config_path, JSON.stringify(config))
+  } catch (err) {
+    console.log('Could not write wfconfig file.', err)
+  }
+}
+
+function tryConvertingWfrcFile () {
+  const rc_path = userhome+"/.wfrc"
+  const rc = fs.existsSync(rc_path) && fs.readFileSync(rc_path, 'utf8')
+  rc_regex = /sessionid: (\w+)/
+  if (rc && rc_regex.test(rc)) {
+    return rc.match(rc_regex)[1]
+  }
+}
+
 function run (argv) {
   argv = argv || {_: []}
 
   const Workflowy = require('./')
-  const fs = require('fs')
   const Q = require('q')
 
   function handleErr(reason) {
@@ -15,52 +60,6 @@ function run (argv) {
     } else {
       console.log("Error " + reason.status + ": ", reason.message)
       process.exit(1)
-    }
-  }
-
-  const userhome = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME']
-  const config_path = userhome+"/.wfconfig.json"
-
-  function tryConvertingWfrcFile () {
-    const rc_path = userhome+"/.wfrc"
-    const rc = fs.existsSync(rc_path) && fs.readFileSync(rc_path, 'utf8')
-    rc_regex = /sessionid: (\w+)/
-    if (rc && rc_regex.test(rc)) {
-      return rc.match(rc_regex)[1]
-    }
-  }
-
-  function loadWfConfig() {
-    let exists = fs.existsSync(config_path)
-    let config = {aliases: {}}
-    if (fs.existsSync(config_path)) {
-      let configString = fs.readFileSync(config_path, 'utf8')
-      try {
-        return JSON.parse(configString)
-      } catch(err) {
-        console.log('Error parsing JSON string:', err)
-        return {aliases: {}}
-      }
-    } else {
-      let sessionid = tryConvertingWfrcFile()
-      if (sessionid) {
-        config.sessionid = sessionid
-        try {
-          console.log("would unlink here")
-          // fs.unlinkSync(userhome+"/.wfrc")
-        } catch (err) {}
-      }
-      fs.writeFileSync(config_path, JSON.stringify(config))
-      return config
-    }
-  }
-
-  function writeWfConfig() {
-    // console.log("config", config)
-    try {
-      fs.writeFileSync(config_path, JSON.stringify(config))
-    } catch (err) {
-      console.log('Could not write wfconfig file.', err)
     }
   }
 
@@ -136,11 +135,11 @@ function run (argv) {
       verb = argv._[1]
       if (verb === 'add') {
         aliases[argv.name] = argv.id
-        writeWfConfig()
+        writeWfConfig(config)
         console.log("Added new alias '" + argv.name + "' for id '" + argv.id + "'")
       } else if (verb === 'remove') {
         delete aliases[argv.name]
-        writeWfConfig()
+        writeWfConfig(config)
         console.log("Removed alias for name '" + argv.name + "'")
       } else {
         console.log(aliases)
@@ -228,7 +227,7 @@ function run (argv) {
     }
   }
 
-  function auth () {
+  function auth (opts={}) {
     const prompt = require('prompt')
     console.log("What is your workflowy login info? This will not be saved, merely used once to authenticate.")
     var schema = {
@@ -275,7 +274,7 @@ function run (argv) {
       console.log("Login successful.")
       try {
         config.sessionid = wf.sessionid
-        writeWfConfig()
+        writeWfConfig(config)
         console.log("Successfully wrote sessionid to " + config_path)
       } catch (e) {
         return console.log("Failed to write sessionid to " + config_path)
@@ -283,11 +282,10 @@ function run (argv) {
     }, err => {
       console.log("Failed to get sessionid. Check your username/password.")
     }).fin(() => {
-      if (argv._[0]) {
-
-      } else {
-
+      if (command) {
         return runCommand()
+      } else {
+        return config.sessionid
       }
       // console.log("reached newAuth fin")
       // process.exit()
@@ -309,4 +307,6 @@ if (require.main === module) { // called directly
   run(argv)
 } else {
   exports.run = run
+  exports.loadWfConfig = loadWfConfig
+  exports.writeWfConfig = writeWfConfig
 }
