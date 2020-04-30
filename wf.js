@@ -19,8 +19,8 @@ function loadWfConfig() {
     if (sessionid) {
       config.sessionid = sessionid
       try {
-        console.log("would unlink here")
-        // fs.unlinkSync(userhome+"/.wfrc")
+        // console.log("would unlink here")
+         fs.unlinkSync(userhome+"/.wfrc")
       } catch (err) {}
     }
     fs.writeFileSync(config_path, JSON.stringify(config))
@@ -128,9 +128,8 @@ function run (argv) {
     console.log("")
   }
 
+  var command = argv._[0]
   function runCommand () {
-    var command = argv._[0]
-
     if (command === 'alias') {
       verb = argv._[1]
       if (verb === 'add') {
