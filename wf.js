@@ -269,7 +269,6 @@ function run (argv) {
       }, err => deferred.reject(err))
     })
     return deferred.promise.then(() => {
-      // console.log("wf.sessionid", wf.sessionid)
       console.log("Login successful.")
       try {
         config.sessionid = wf.sessionid
@@ -280,14 +279,14 @@ function run (argv) {
       }
     }, err => {
       console.log("Failed to get sessionid. Check your username/password.")
-    }).fin(() => {
+    }).then(() => {
       if (command) {
+        console.log("command", command)
         return runCommand()
       } else {
+        console.log("returning config.sessionid", config.sessionid)
         return config.sessionid
       }
-      // console.log("reached newAuth fin")
-      // process.exit()
     })
   }
 
