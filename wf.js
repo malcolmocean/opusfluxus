@@ -240,7 +240,7 @@ function run (argv) {
     let wf = new Workflowy({})
     prompt.start()
     prompt.get(schema, function (err, result) {
-      if (err) {console.log('CANCELLED'); return}
+      if (err) {console.log('\nCANCELLED\n'); process.exit(1)}
       const email = result.email
       wf.getAuthType(email).then(authType => {
         if (authType == 'password') {
@@ -255,6 +255,7 @@ function run (argv) {
           schema = {properties: {code: {required: true}}}
         }
         prompt.get(schema, function (err, result2) {
+          if (err) {console.log('\nCANCELLED\n'); process.exit(1)}
           wf = new Workflowy({username: email, password: result2.password, code: result2.code})
           wf.login().then(function () {
             if (wf.sessionid) {

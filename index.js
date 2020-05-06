@@ -4,10 +4,10 @@ const querystring = require('querystring')
 const uuidv4 = require('uuid/v4')
 
 var utils = {
-  getTimestamp: function(meta) {
+  getTimestamp: function (meta) {
     return Math.floor((Date.now() - meta.projectTreeData.mainProjectTreeInfo.dateJoinedTimestampInSeconds) / 60)
   },
-  makePollId: function() {
+  makePollId: function () {
     return (Math.random() + 1).toString(36).substr(2, 8)
   },
   httpAbove299toError: function (arg) {
@@ -44,6 +44,7 @@ module.exports = Workflowy = (function() {
       json: true
     })
     this.sessionid = auth.sessionid
+    this.includeSharedProjects = auth.includeSharedProjects
     if (!this.sessionid) {
       this.username = auth.username || auth.email
       this.password = auth.password || ''
@@ -94,99 +95,121 @@ module.exports = Workflowy = (function() {
     return this.refresh()
   }
 
-  Workflowy.prototype.refresh = function () {
-    function meta (_this) {
-      return function() {
-        var opts = {
-          url: Workflowy.urls.meta
-        }
-        if (_this.sessionid) {
-          opts.headers = {
-            Cookie: 'sessionid='+_this.sessionid
-          }
-        }
-        return Q.ninvoke(_this.request, 'get', opts)
-        .then(utils.httpAbove299toError)
-        .then(function(arg) {
-          var body = arg[1]
-          return body
-        }).fail(function(err) {
-          err.message = "Error fetching document root: " + err.message
-          return Q.reject(err)
-        })
-      }
+  Workflowy.prototype.refresh = async function () {
+    if (!this.sessionid) {
+      await this.login()
+    }
+    var opts = {
+      url: Workflowy.urls.meta
     }
     if (this.sessionid) {
-      this.meta = Q.when(true, meta(this))
-    } else {
-      this.meta = this.login().then(meta(this))
-    }
-    this.outline = this.meta.then((function(_this) {
-      return function(body) {
-        var meta
-        meta = body.projectTreeData.mainProjectTreeInfo
-        _this._lastTransactionId = meta.initialMostRecentOperationTransactionId
-        return meta.rootProjectChildren
+      opts.headers = {
+        Cookie: 'sessionid='+this.sessionid
       }
-    })(this))
-    return this.nodes = this.outline.then((function(_this) {
-      return function(outline) {
-        var addChildren, result
-        result = []
-        addChildren = function(arr, parentId, parentCompleted) {
-          var child, children, j, len
-          result.push.apply(result, arr)
-          for (j = 0, len = arr.length; j < len; j++) {
-            child = arr[j]
-            child.parentId = parentId
-            child.pcp = parentCompleted
-            if (children = child.ch) {
-              addChildren(children, child.id, child.cp || child.pcp)
-            }
+    }
+    this.meta = Q.ninvoke(this.request, 'get', opts)
+    .then(utils.httpAbove299toError)
+    .then(arg => arg[1])
+    .fail(err => {
+      err.message = "Error fetching document root: " + err.message
+      return Q.reject(err)
+    })
+
+    this.outline = this.meta.then(meta => {
+      if (this.includeSharedProjects) {
+        Workflowy.transcludeShares(meta)
+      }
+      const mpti = meta.projectTreeData.mainProjectTreeInfo
+      this._lastTransactionId = mpti.initialMostRecentOperationTransactionId
+      return mpti.rootProjectChildren
+    })
+    return this.nodes = this.outline.then(outline => {
+      var addChildren, result
+      result = []
+      addChildren = function(arr, parentId, parentCompleted) {
+        var child, children, j, len
+        result.push.apply(result, arr)
+        for (j = 0, len = arr.length; j < len; j++) {
+          child = arr[j]
+          child.parentId = parentId
+          child.pcp = parentCompleted
+          if (children = child.ch) {
+            addChildren(children, child.id, child.cp || child.pcp)
           }
         }
-        addChildren(outline, 'None', false)
-        return result
       }
-    })(this))
+      addChildren(outline, 'None', false)
+      return result
+    })
   }
 
-  Workflowy.prototype._update = function(operations) {
-    return this.meta.then((function(_this) {
-      return function(meta) {
-        var clientId, j, len, operation, timestamp
-        timestamp = utils.getTimestamp(meta)
-        clientId = meta.projectTreeData.clientId
-        for (j = 0, len = operations.length; j < len; j++) {
-          operation = operations[j]
-          operation.client_timestamp = 140101232 //timestamp
-        }
-        return Q.ninvoke(_this.request, 'post', {
-          url: Workflowy.urls.update,
-          form: {
-            client_id: clientId,
-            client_version: Workflowy.clientVersion,
-            push_poll_id: utils.makePollId(),
-            push_poll_data: JSON.stringify([
-              {
-                most_recent_operation_transaction_id: _this._lastTransactionId,
-                operations: operations
-              }
-            ])
-          },
-          headers: {
-            Cookie: 'sessionid='+_this.sessionid
-          }
-        })
-        .then(utils.httpAbove299toError)
-        .then(function(arg) {
-          var resp = arg[0]
-          var body = arg[1]
-          _this._lastTransactionId = body.results[0].new_most_recent_operation_transaction_id
-          return [resp, body, timestamp]
-        })
+  Workflowy.prototype._update = function (operations) {
+    return this.meta.then(meta => {
+      var clientId, j, len, operation, timestamp
+      timestamp = utils.getTimestamp(meta)
+      clientId = meta.projectTreeData.clientId
+      for (j = 0, len = operations.length; j < len; j++) {
+        operation = operations[j]
+        operation.client_timestamp = timestamp
       }
-    })(this))
+      return Q.ninvoke(this.request, 'post', {
+        url: Workflowy.urls.update,
+        form: {
+          client_id: clientId,
+          client_version: Workflowy.clientVersion,
+          push_poll_id: utils.makePollId(),
+          push_poll_data: JSON.stringify([
+            {
+              most_recent_operation_transaction_id: this._lastTransactionId,
+              operations: operations
+            }
+          ])
+        },
+        headers: {
+          Cookie: 'sessionid='+this.sessionid
+        }
+      })
+      .then(utils.httpAbove299toError)
+      .then(arg => {
+        var resp = arg[0]
+        var body = arg[1]
+        this._lastTransactionId = body.results[0].new_most_recent_operation_transaction_id
+        return [resp, body, timestamp]
+      })
+    })
+  }
+
+  /* modifies the tree so that shared projects are added in */
+  Workflowy.transcludeShares = function (meta) {
+    const howManyShares = meta.projectTreeData.auxiliaryProjectTreeInfos.length
+    if (!howManyShares) {return}
+    const auxProjectsByShareId = {}
+    meta.projectTreeData.auxiliaryProjectTreeInfos.map(x => {
+      auxProjectsByShareId[x.rootProject.shared.share_id] = x
+    })
+    const topLevelNodes = meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren
+    const shareEntryPoints = findAllBreadthFirst(topLevelNodes, node => node.as, howManyShares)
+    shareEntryPoints.map(node => {
+      const auxP = auxProjectsByShareId[node.as]
+      node.nm = auxP.rootProject.nm
+      node.ch = auxP.rootProjectChildren
+    })
+  }
+
+  function findAllBreadthFirst (topLevelNodes, search, maxResults) {
+    const queue = [].concat(topLevelNodes)
+    let nodes = []
+    while (node = queue.shift()) {
+      if (node && search(node)) {
+        nodes.push(node)
+      } else if (node && node.ch && node.ch.length) {
+        queue.push(...node.ch)
+      }
+      if (nodes.length == maxResults) {
+        break
+      }
+    }
+    return nodes
   }
 
   /*
@@ -224,7 +247,8 @@ module.exports = Workflowy = (function() {
         return Boolean(node.pcp) === !!parentCompleted && originalCondition2(node)
       }
     }
-    return this.nodes.then(function(nodes) {
+    return this.nodes.then(nodes => {
+      nodes.map(node => node.as && console.log("AS AS AS", node))
       if (condition) {
         nodes = nodes.filter(condition)
       }
@@ -237,7 +261,7 @@ module.exports = Workflowy = (function() {
     if (Array.isArray(nodes)) {
       nodes = [nodes]
     }
-    operations = (function() {
+    operations = (() => {
       var j, len, results
       results = []
       for (j = 0, len = nodes.length; j < len; j++) {
@@ -256,11 +280,7 @@ module.exports = Workflowy = (function() {
       }
       return results
     })()
-    return this._update(operations).then((function(_this) {
-      return function() {
-        _this.refresh()
-      }
-    })(this))
+    return this._update(operations).then(() => {this.refresh(); return})
   }
 
   Workflowy.prototype.complete = function(nodes, tf) {
@@ -271,7 +291,7 @@ module.exports = Workflowy = (function() {
     if (!Array.isArray(nodes)) {
       nodes = [nodes]
     }
-    operations = (function() {
+    operations = (() => {
       var j, len, results
       results = []
       for (j = 0, len = nodes.length; j < len; j++) {
@@ -289,20 +309,18 @@ module.exports = Workflowy = (function() {
       }
       return results
     })()
-    return this._update(operations).then((function(_this) {
-      return function(arg) {
-        var body, i, j, len, resp, timestamp
-        resp = arg[0], body = arg[1], timestamp = arg[2]
-        for (i = j = 0, len = nodes.length; j < len; i = ++j) {
-          node = nodes[i]
-          if (tf) {
-            node.cp = timestamp
-          } else {
-            delete node.cp
-          }
+    return this._update(operations).then(arg => {
+      var body, i, j, len, resp, timestamp
+      resp = arg[0], body = arg[1], timestamp = arg[2]
+      for (i = j = 0, len = nodes.length; j < len; i = ++j) {
+        node = nodes[i]
+        if (tf) {
+          node.cp = timestamp
+        } else {
+          delete node.cp
         }
       }
-    })(this))
+    })
   }
 
   Workflowy.prototype.createTrees = async function (parentid, nodeArray, priority) {
@@ -355,7 +373,7 @@ module.exports = Workflowy = (function() {
       nodes = [nodes]
       newNames = [newNames]
     }
-    operations = (function() {
+    operations = (() => {
       var j, len, results
       results = []
       for (i = j = 0, len = nodes.length; j < len; i = ++j) {
@@ -374,17 +392,15 @@ module.exports = Workflowy = (function() {
       }
       return results
     })()
-    return this._update(operations).then((function(_this) {
-      return function(arg) {
-        var body, j, len, resp, timestamp
-        resp = arg[0], body = arg[1], timestamp = arg[2]
-        for (i = j = 0, len = nodes.length; j < len; i = ++j) {
-          node = nodes[i]
-          node.nm = newNames[i]
-          node.lm = timestamp
-        }
+    return this._update(operations).then(arg => {
+      var body, j, len, resp, timestamp
+      resp = arg[0], body = arg[1], timestamp = arg[2]
+      for (i = j = 0, len = nodes.length; j < len; i = ++j) {
+        node = nodes[i]
+        node.nm = newNames[i]
+        node.lm = timestamp
       }
-    })(this))
+    })
   }
 
   return Workflowy

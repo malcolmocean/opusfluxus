@@ -20,6 +20,14 @@ Also this project is in JavaScript, so if you prefer that to working in CoffeeSc
   - Added new `createTree` and `createTrees` functions
   - Added a new `getAuthType(email)` function, that takes an email and returns `"password"`, or `"code"` (it might also return `"google"` but it also seems maybe they removed it).
 - Breaking change made from 0.4.x to 0.5.0 - the previous set-up would result in unhandled promise rejections in the constructor if login failed or sessionid was expired. Now refresh is no longer called in the constructor, so you have to call it manually (thus you can handle the promise yourself).
+- 2020-04-28:
+  - merged Carolin's aliases function
+  - rewrote to use `~/.wfconfig.json` instead of `~/.wfrc`
+- 2020-04-30:
+  - exported the cli for use by other modules (for [this Roam Research JSON import module](https://github.com/malcolmocean/wf2roam))
+- 2020-05-06:
+  - rewrote some of the index code to use async/await instead of ridiculous `function (_this) {return function (actual) {}})()` constructs (maybe those looked saner in the original coffeescript?)
+  - added a `includeSharedProjects` setting, which modifies the workflowy tree so that external shared projects are part of the tree (pass to Workflowy constructor as property of auth object)
 
 ## Install to your node project
 
