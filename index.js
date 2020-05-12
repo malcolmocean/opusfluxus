@@ -248,7 +248,6 @@ module.exports = Workflowy = (function() {
       }
     }
     return this.nodes.then(nodes => {
-      nodes.map(node => node.as && console.log("AS AS AS", node))
       if (condition) {
         nodes = nodes.filter(condition)
       }
