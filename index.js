@@ -184,11 +184,11 @@ module.exports = Workflowy = (function() {
     const howManyShares = meta.projectTreeData.auxiliaryProjectTreeInfos.length
     if (!howManyShares) {return}
     const auxProjectsByShareId = {}
-    if (x.rootProject.shared) {
-      meta.projectTreeData.auxiliaryProjectTreeInfos.map(x => {
+    meta.projectTreeData.auxiliaryProjectTreeInfos.map(x => {
+      if (x.rootProject && x.rootProject.shared) {
         auxProjectsByShareId[x.rootProject.shared.share_id] = x
-      })
-    }
+      }
+    })
     const topLevelNodes = meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren
     const shareEntryPoints = findAllBreadthFirst(topLevelNodes, node => node.as, howManyShares)
     shareEntryPoints.map(node => {
