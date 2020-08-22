@@ -146,7 +146,7 @@ function run (argv) {
       return Promise.resolve()
     }
 
-    var wf = new Workflowy({sessionid: config.sessionid})
+    var wf = new Workflowy({sessionid: config.sessionid, includeSharedProjects: config.includeSharedProjects})
     wf.refresh()
     if (command === 'capture') {
       console.log("• • • creating workflowy node • • •")
