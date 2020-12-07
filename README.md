@@ -117,6 +117,6 @@ For an easier configuration, you can put a file `aliases.json` in the folder you
 {
    "inbox": "00000000-0000-0000-0000-000000000000",
    "todo": "00000000-0000-0000-0000-000000000000",
-   "reccomendations": "00000000-0000-0000-0000-000000000000"
+   "recommendations": "00000000-0000-0000-0000-000000000000"
 }
 ```
