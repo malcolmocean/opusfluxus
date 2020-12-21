@@ -117,7 +117,7 @@ function run (argv) {
     console.log("                                "+"    (use a number like 10000 for bottom)")
     console.log("   [--note=<str>]               "+"a note for the node (default '')")
     console.log("")
-    console.log(" alias                      "+"list all curretnly defined aliases")
+    console.log(" alias                      "+"list all currently defined aliases")
     console.log("")
     console.log(" alias add                  "+"add new alias")
     console.log("    --id=<id>                   "+"36-digit uuid to alias (required)")
