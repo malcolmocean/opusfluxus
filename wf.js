@@ -129,7 +129,7 @@ function run (argv) {
   }
 
   var command = argv._[0]
-  function runCommand () {
+  async function runCommand () {
     if (command === 'alias') {
       verb = argv._[1]
       if (verb === 'add') {
@@ -147,7 +147,7 @@ function run (argv) {
     }
 
     var wf = new Workflowy({sessionid: config.sessionid, includeSharedProjects: config.includeSharedProjects})
-    wf.refresh()
+    await wf.refresh()
     if (command === 'capture') {
       console.log("• • • creating workflowy node • • •")
       var parentid = apply_alias(argv.parentid)

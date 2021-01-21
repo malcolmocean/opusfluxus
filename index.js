@@ -45,6 +45,7 @@ module.exports = Workflowy = (function() {
     })
     this.sessionid = auth.sessionid
     this.includeSharedProjects = auth.includeSharedProjects
+    this.resolveMirrors = auth.resolveMirrors !== false // default true, since mirrors are new so there's no expected behavior and most users will want this
     if (!this.sessionid) {
       this.username = auth.username || auth.email
       this.password = auth.password || ''
@@ -114,33 +115,19 @@ module.exports = Workflowy = (function() {
       err.message = "Error fetching document root: " + err.message
       return Q.reject(err)
     })
-
-    this.outline = this.meta.then(meta => {
-      if (this.includeSharedProjects) {
-        Workflowy.transcludeShares(meta)
-      }
-      const mpti = meta.projectTreeData.mainProjectTreeInfo
-      this._lastTransactionId = mpti.initialMostRecentOperationTransactionId
-      return mpti.rootProjectChildren
-    })
-    return this.nodes = this.outline.then(outline => {
-      var addChildren, result
-      result = []
-      addChildren = function(arr, parentId, parentCompleted) {
-        var child, children, j, len
-        result.push.apply(result, arr)
-        for (j = 0, len = arr.length; j < len; j++) {
-          child = arr[j]
-          child.parentId = parentId
-          child.pcp = parentCompleted
-          if (children = child.ch) {
-            addChildren(children, child.id, child.cp || child.pcp)
-          }
-        }
-      }
-      addChildren(outline, 'None', false)
-      return result
-    })
+    const meta = await this.meta
+    if (this.includeSharedProjects) {
+      Workflowy.transcludeShares(meta)
+    }
+    const mpti = meta.projectTreeData.mainProjectTreeInfo
+    this._lastTransactionId = mpti.initialMostRecentOperationTransactionId
+    this.outline = Q.resolve(mpti.rootProjectChildren)
+    const outline = await this.outline
+    // outline.splice(2, 1)
+    if (this.resolveMirrors) {
+      Workflowy.transcludeMirrors(outline)
+    }
+    return this.nodes = Q.resolve(Workflowy.pseudoFlattenUsingSet(outline))
   }
 
   Workflowy.prototype._update = function (operations) {
@@ -179,6 +166,13 @@ module.exports = Workflowy = (function() {
     })
   }
 
+  function originalIdSomewhereElse (node) {
+    const originalId = node.originalId || node.mirror && node.mirror.originalId
+    if (originalId) {
+      return originalId
+    }
+  }
+
   /* modifies the tree so that shared projects are added in */
   Workflowy.transcludeShares = function (meta) {
     const howManyShares = meta.projectTreeData.auxiliaryProjectTreeInfos.length
@@ -197,6 +191,66 @@ module.exports = Workflowy = (function() {
       node.nm = auxP.rootProject.nm
       node.ch = auxP.rootProjectChildren
     })
+  }
+
+  Workflowy.getNodesByIdMap = function (outline) {
+    const map = {}
+    const mapChildren = (arr) => {
+      arr.map(node => map[node.id] = node)
+      for (let j = 0, len = arr.length; j < len; j++) {
+        arr[j].ch && mapChildren(arr[j].ch)
+      }
+    }
+    mapChildren(outline)
+    return map
+  }
+
+  /* modifies the tree so that mirror bullets are in all places they should be */
+  Workflowy.transcludeMirrors = function (outline) {
+    console.log("transcludeMirrors")
+    const nodesByIdMap = Workflowy.getNodesByIdMap(outline)
+    const transcludeChildren = (arr) => {
+      for (let j = 0, len = arr.length; j < len; j++) {
+        const node = arr[j]
+        // console.log("node.nm", node.nm)
+        // console.log("node", node)
+        const originalId = node.metadata && (node.metadata.originalId || node.metadata.mirror && node.metadata.mirror.originalId)
+        if (originalId) {
+          const originalNode = nodesByIdMap[originalId]
+          if (originalNode) {
+            arr[j] = originalNode
+          } else {
+            // shouldn't happen; did when I was doing weird stuff in testing
+          }
+        } else { // only do children when considering in original situation
+          arr[j].ch && transcludeChildren(arr[j].ch)
+        }
+      }
+    }
+    transcludeChildren(outline)
+  }
+
+  Workflowy.pseudoFlattenUsingSet = function (outline) {
+    const set = new Set()
+    const addChildren = (arr, parentId, parentCompleted) => {
+      var child, children, j, len
+      for (j = 0, len = arr.length; j < len; j++) {
+        set.add(arr[j])
+        child = arr[j]
+        child.parentId = parentId
+        // TODO = "get this to use original parentId?"
+        if (typeof child.pcp == 'undefined') {
+          child.pcp = parentCompleted
+        } else {
+          child.pcp = child.pcp & parentCompleted // for mirrors
+        }
+        if (children = child.ch) {
+          addChildren(children, child.id, child.cp || child.pcp)
+        }
+      }
+    }
+    addChildren(outline, 'None', false)
+    return [...set] // array
   }
 
   function findAllBreadthFirst (topLevelNodes, search, maxResults) {
@@ -221,34 +275,23 @@ module.exports = Workflowy = (function() {
    */
 
   Workflowy.prototype.find = function(search, completed, parentCompleted) {
-    var condition, deferred, originalCondition, originalCondition2
-    if (!search) {
-
-    } else if (typeof search == 'function') {
+    let condition, deferred, originalCondition, originalCondition2
+    if (typeof search == 'function') {
       condition = search
     } else if (typeof search == 'string') {
-      condition = function(node) {
-        return node.nm === search
-      }
+      condition = node => node.nm === search
     } else if (search instanceof RegExp) {
-      condition = function(node) {
-        return search.test(node.nm)
-      }
-    } else {
-      (deferred = Q.defer()).reject(new Error('unknown search type'))
-      return deferred
+      condition = node => search.test(node.nm)
+    } else if (search) {
+      throw new Error('unknown search type')
     }
     if (typeof completed == 'boolean') {
       originalCondition = condition
-      condition = function(node) {
-        return (Boolean(node.cp) === !!completed) && originalCondition(node)
-      }
+      condition = node => (Boolean(node.cp) === !!completed) && originalCondition(node)
     }
     if (typeof parentCompleted == 'boolean') {
       originalCondition2 = condition
-      condition = function(node) {
-        return Boolean(node.pcp) === !!parentCompleted && originalCondition2(node)
-      }
+      condition = node => Boolean(node.pcp) === !!parentCompleted && originalCondition2(node)
     }
     return this.nodes.then(nodes => {
       if (condition) {

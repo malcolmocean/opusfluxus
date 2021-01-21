@@ -2,7 +2,7 @@
 
 NodeJS wrapper for WorkFlowy. Created for integration with [Complice](https://complice.co), a productivity app that's less "what are all the parts of this thing I have to do?" and more ***"what am I going to do today?"***
 
-This was forked from [ruxi/workflowy](https://github.com/ruxi/workflowy), and improvements are:
+This was forked from [ruxi/workflowy](https://github.com/ruxi/workflowy) (which apparently doesn't exist anymore!) and improvements are:
 
 - it supports workflowy's new code-based authentication
 - it has a primitive command-line interface
@@ -12,7 +12,7 @@ This was forked from [ruxi/workflowy](https://github.com/ruxi/workflowy), and im
 
 Also this project is in JavaScript, so if you prefer that to working in CoffeeScript, you've come to the right place.
 
-(I'd love to get rid of `Q` and use `bluebird` or native Promises though, plus many other structural improvements.)
+(I'm planning to get rid of `Q` and use `bluebird` or native Promises though, plus many other structural improvements.)
 
 ## Changelog
 
@@ -28,6 +28,8 @@ Also this project is in JavaScript, so if you prefer that to working in CoffeeSc
 - 2020-05-06:
   - rewrote some of the index code to use async/await instead of ridiculous `function (_this) {return function (actual) {}})()` constructs (maybe those looked saner in the original coffeescript?)
   - added a `includeSharedProjects` setting, which modifies the workflowy tree so that external shared projects are part of the tree (pass to Workflowy constructor as property of auth object)
+- 2021-01-21:
+  - **support for mirrors**! unless you pass `resolveMirrors: false` in the constructor, it will automatically make mirrored bullets show up in the right places in the tree
 
 ## Install to your node project
 
