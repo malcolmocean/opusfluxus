@@ -206,16 +206,19 @@ module.exports = Workflowy = (function() {
   }
 
   /* modifies the tree so that mirror bullets are in all places they should be */
+  // uncomment the ignoreIds lines to make it not infinitely recurse
   Workflowy.transcludeMirrors = function (outline) {
     console.log("transcludeMirrors")
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline)
     const transcludeChildren = (arr) => {
+    // const transcludeChildren = (arr, ignoreIds) => {
+      // ignoreIds = JSON.parse(JSON.stringify(ignoreIds)) // jsoncopy
       for (let j = 0, len = arr.length; j < len; j++) {
         const node = arr[j]
-        // console.log("node.nm", node.nm)
-        // console.log("node", node)
+        // ignoreIds[node.id] = true
         const originalId = node.metadata && (node.metadata.originalId || node.metadata.mirror && node.metadata.mirror.originalId)
         if (originalId) {
+          // if (ignoreIds[originalId]) {return}
           const originalNode = nodesByIdMap[originalId]
           if (originalNode) {
             arr[j] = originalNode
@@ -224,10 +227,19 @@ module.exports = Workflowy = (function() {
           }
         } else { // only do children when considering in original situation
           arr[j].ch && transcludeChildren(arr[j].ch)
+          // arr[j].ch && transcludeChildren(arr[j].ch, ignoreIds)
         }
       }
     }
-    transcludeChildren(outline)
+    try {
+      transcludeChildren(outline, {})
+      // transcludeChildren(outline, {})
+      // transcludeChildren(outline, {})
+    } catch (e) {
+      console.log("========================================")
+      console.log(e)
+      console.log(e.name)
+    }
   }
 
   Workflowy.pseudoFlattenUsingSet = function (outline) {
@@ -235,6 +247,7 @@ module.exports = Workflowy = (function() {
     const addChildren = (arr, parentId, parentCompleted) => {
       var child, children, j, len
       for (j = 0, len = arr.length; j < len; j++) {
+        const setHasAlready = set.has(arr[j]) // otherwise mirrors can cause infinite recursion
         set.add(arr[j])
         child = arr[j]
         child.parentId = parentId
@@ -244,7 +257,8 @@ module.exports = Workflowy = (function() {
         } else {
           child.pcp = child.pcp & parentCompleted // for mirrors
         }
-        if (children = child.ch) {
+        const children = child.ch
+        if (children && children.length && !setHasAlready) {
           addChildren(children, child.id, child.cp || child.pcp)
         }
       }
