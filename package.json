@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "minimist": "^1.2.5",
+    "node-fetch": "^2.6.1",
     "prompt": "1.0.0",
     "q": "^1.1.2",
     "request": "^2.48.0",

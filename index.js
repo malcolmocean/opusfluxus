@@ -1,5 +1,6 @@
 const Q = require('q');
 const request = require('request');
+const fetch = require('node-fetch');
 const uuidv4 = require('uuid/v4');
 
 const utils = require('./utils');
@@ -54,7 +55,7 @@ module.exports = Workflowy = (function () {
       })
         .then(utils.httpAbove299toError)
         .then((arg) => {
-          var body = arg[1];
+          let body = arg[1];
           if (/Please enter a correct username and password./.test(body)) {
             return Q.reject({ status: 403, message: 'Incorrect login info' });
           }
@@ -67,7 +68,7 @@ module.exports = Workflowy = (function () {
     if (!this.sessionid) {
       await this.login();
     }
-    var opts = {
+    let opts = {
       url: Workflowy.urls.meta,
     };
     if (this.sessionid) {
@@ -99,14 +100,14 @@ module.exports = Workflowy = (function () {
 
   Workflowy.prototype._update = function (operations) {
     return this.meta.then((meta) => {
-      var clientId, j, len, operation, timestamp;
-      timestamp = utils.getTimestamp(meta);
-      clientId = meta.projectTreeData.clientId;
-      for (j = 0, len = operations.length; j < len; j++) {
-        operation = operations[j];
+      const clientId = meta.projectTreeData.clientId;
+      const timestamp = utils.getTimestamp(meta);
+
+      operations.forEach((operation) => {
         operation.client_timestamp = timestamp;
-      }
-      return Q.ninvoke(this.request, 'post', {
+      });
+
+      Q.ninvoke(this.request, 'post', {
         url: Workflowy.urls.update,
         form: {
           client_id: clientId,
@@ -183,7 +184,6 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.transcludeMirrors = function (outline) {
-    console.log('transcludeMirrors');
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline);
     const transcludeChildren = (arr) => {
       for (let j = 0, len = arr.length; j < len; j++) {
@@ -211,7 +211,7 @@ module.exports = Workflowy = (function () {
   Workflowy.pseudoFlattenUsingSet = function (outline) {
     const set = new Set();
     const addChildren = (arr, parentId, parentCompleted) => {
-      var child, children, j, len;
+      let child, children, j, len;
       for (j = 0, len = arr.length; j < len; j++) {
         set.add(arr[j]);
         child = arr[j];
@@ -282,12 +282,12 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.delete = function (nodes) {
-    var node, operations;
+    let node, operations;
     if (Array.isArray(nodes)) {
       nodes = [nodes];
     }
     operations = (() => {
-      var j, len, results;
+      let j, len, results;
       results = [];
       for (j = 0, len = nodes.length; j < len; j++) {
         node = nodes[j];
@@ -312,7 +312,7 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.complete = function (nodes, tf) {
-    var node, operations;
+    let node, operations;
     if (tf == null) {
       tf = true;
     }
@@ -321,7 +321,7 @@ module.exports = Workflowy = (function () {
     }
 
     operations = (() => {
-      var j, len, results;
+      let j, len, results;
       results = [];
       for (j = 0, len = nodes.length; j < len; j++) {
         node = nodes[j];
@@ -340,7 +340,7 @@ module.exports = Workflowy = (function () {
     })();
 
     return this._update(operations).then((arg) => {
-      var body, i, j, len, resp, timestamp;
+      let body, i, j, len, resp, timestamp;
       (resp = arg[0]), (body = arg[1]), (timestamp = arg[2]);
       for (i = j = 0, len = nodes.length; j < len; i = ++j) {
         node = nodes[i];
@@ -386,8 +386,8 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.create = function (parentid, name, priority, note) {
-    var projectid = uuidv4();
-    var operations = [
+    let projectid = uuidv4();
+    let operations = [
       {
         type: 'create',
         data: {
@@ -441,7 +441,3 @@ module.exports = Workflowy = (function () {
 
   return Workflowy;
 })();
-
-module.exports.cli = require('./wf.js').run;
-module.exports.loadWfConfig = require('./wf.js').loadWfConfig;
-module.exports.writeWfConfig = require('./wf.js').writeWfConfig;
