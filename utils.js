@@ -1,3 +1,5 @@
+const Q = require('q');
+
 const utils = {
   getTimestamp: function (meta) {
     return Math.floor(
