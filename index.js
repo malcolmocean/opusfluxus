@@ -1,6 +1,6 @@
 const Q = require('q');
 const request = require('request');
-const fetch = require('node-fetch');
+// const fetch = require('node-fetch');
 const uuidv4 = require('uuid/v4');
 
 const utils = require('./utils');
@@ -38,9 +38,7 @@ module.exports = Workflowy = (function () {
       },
     })
       .then(utils.httpAbove299toError)
-      .then((result) => {
-        return result[1].authType;
-      });
+      .then((result) => result[1].authType);
   };
 
   Workflowy.prototype.login = function () {
@@ -107,7 +105,7 @@ module.exports = Workflowy = (function () {
         operation.client_timestamp = timestamp;
       });
 
-      Q.ninvoke(this.request, 'post', {
+      return Q.ninvoke(this.request, 'post', {
         url: Workflowy.urls.update,
         form: {
           client_id: clientId,
