@@ -28,6 +28,8 @@
   },
   "dependencies": {
     "dotenv": "^10.0.0",
+    "form-data-encoder": "^1.4.3",
+    "formdata-node": "^4.0.0",
     "minimist": "^1.2.5",
     "node-fetch": "^2.6.1",
     "prompt": "1.0.0",

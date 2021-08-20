@@ -1,9 +1,13 @@
 const Q = require('q');
 const request = require('request');
-// const fetch = require('node-fetch');
 const uuidv4 = require('uuid/v4');
 
 const utils = require('./utils');
+
+const { Readable } = require('stream');
+const { FormData } = require('formdata-node');
+const { FormDataEncoder } = require('form-data-encoder');
+const fetch = require('node-fetch');
 
 module.exports = Workflowy = (function () {
   Workflowy.clientVersion = 18;
@@ -97,6 +101,7 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype._update = function (operations) {
+    // TODO extract meta into separate function
     return this.meta.then((meta) => {
       const clientId = meta.projectTreeData.clientId;
       const timestamp = utils.getTimestamp(meta);
@@ -105,40 +110,51 @@ module.exports = Workflowy = (function () {
         operation.client_timestamp = timestamp;
       });
 
-      return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.update,
-        form: {
-          client_id: clientId,
-          client_version: Workflowy.clientVersion,
-          push_poll_id: utils.makePollId(),
-          push_poll_data: JSON.stringify([
-            {
-              most_recent_operation_transaction_id: this._lastTransactionId,
-              operations: operations,
-            },
-          ]),
+      const pushPollData = JSON.stringify([
+        {
+          most_recent_operation_transaction_id: this._lastTransactionId,
+          operations,
         },
+      ]);
+
+      const form = new FormData();
+      form.set('client_id', clientId);
+      form.set('client_version', Workflowy.clientVersion);
+      form.set('push_poll_id', utils.makePollId());
+      form.set('push_poll_data', pushPollData);
+
+      const encoder = new FormDataEncoder(form);
+
+      const payload = {
+        method: 'POST',
+        body: Readable.from(encoder),
         headers: {
-          Cookie: 'sessionid=' + this.sessionid,
+          ...encoder.headers,
+          Cookie: `sessionid=${this.sessionid}`,
         },
-      })
-        .then(utils.httpAbove299toError)
-        .then((arg) => {
-          const [resp, body] = arg;
+      };
+
+      return fetch(Workflowy.urls.update, payload)
+        .catch((err) => {
+          console.log('i', err);
+        })
+        .then((response) => {
+          return response.json();
+        })
+        .then((body) => {
           this._lastTransactionId =
             body.results[0].new_most_recent_operation_transaction_id;
-          return [resp, body, timestamp];
+          return [body, body, timestamp];
+          //     .then(utils.httpAbove299toError)
+          //     .then((arg) => {
+          //       const [resp, body] = arg;
+          //       this._lastTransactionId =
+          //         body.results[0].new_most_recent_operation_transaction_id;
+          //       return [resp, body, timestamp];
+          //     });
         });
     });
   };
-
-  function originalIdSomewhereElse(node) {
-    const originalId =
-      node.originalId || (node.mirror && node.mirror.originalId);
-    if (originalId) {
-      return originalId;
-    }
-  }
 
   /* modifies the tree so that shared projects are added in */
   Workflowy.transcludeShares = function (meta) {
@@ -383,22 +399,27 @@ module.exports = Workflowy = (function () {
       .then(() => topNode);
   };
 
-  Workflowy.prototype.create = function (parentid, name, priority, note) {
+  Workflowy.prototype.create = function (
+    parentid = 'None',
+    name,
+    priority = 0,
+    note
+  ) {
     let projectid = uuidv4();
     let operations = [
       {
         type: 'create',
         data: {
-          projectid: projectid,
-          parentid: parentid || 'None',
-          priority: priority || 0, // 0 adds as first child, 1 as second, etc
+          projectid,
+          parentid: parentid,
+          priority, // 0 adds as first child, 1 as second, etc
         },
       },
       {
         type: 'edit',
         data: {
-          projectid: projectid,
-          name: name,
+          projectid,
+          name,
           description: note,
         },
       },
