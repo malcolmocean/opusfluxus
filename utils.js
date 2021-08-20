@@ -1,4 +1,4 @@
-var utils = {
+const utils = {
   getTimestamp: function (meta) {
     return Math.floor(
       (Date.now() -
@@ -10,8 +10,7 @@ var utils = {
     return (Math.random() + 1).toString(36).substr(2, 8);
   },
   httpAbove299toError: function (arg) {
-    var body, error, resp;
-    (resp = arg[0]), (body = arg[1]);
+    const [resp, body] = arg;
     var status = resp.statusCode;
     if (
       !(
@@ -23,15 +22,14 @@ var utils = {
       if (300 <= status && status < 600) {
         return Q.reject({
           status: status,
-          message:
-            'Error with request ' + resp.request.uri.href + ': ' + status,
+          message: `Error with request ${resp.request.uri.href}:${status}`,
           body: body,
         });
       }
-      if ((error = body.error)) {
+      if (body.error) {
         return Q.reject({
           status: status,
-          message: 'Error with request ' + resp.request.uri.href + ': ' + error,
+          message: `Error with request ${resp.request.uri.href}:${error}`,
           body: body,
         });
       }
@@ -40,4 +38,4 @@ var utils = {
   },
 };
 
-module.exports.utils = utils;
+module.exports = utils;

@@ -11,18 +11,12 @@ module.exports = Workflowy = (function () {
     newAuth: 'https://workflowy.com/api/auth',
     // login: 'https://workflowy.com/ajax_login',
     // login: 'https://workflowy.com/accounts/login/',
-    meta:
-      'https://workflowy.com/get_initialization_data?client_version=' +
-      Workflowy.clientVersion,
+    meta: `https://workflowy.com/get_initialization_data?client_version=${Workflowy.clientVersion}`,
     update: 'https://workflowy.com/push_and_poll',
   };
 
-  function Workflowy(auth, jar) {
-    this.jar = jar ? request.jar(jar) : request.jar();
-    this.request = request.defaults({
-      jar: this.jar,
-      json: true,
-    });
+  function Workflowy(auth) {
+    this.request = request.defaults({ json: true });
     this.sessionid = auth.sessionid;
     this.includeSharedProjects = auth.includeSharedProjects;
     this.resolveMirrors = auth.resolveMirrors !== false; // default true, since mirrors are new so there's no expected behavior and most users will want this
@@ -64,19 +58,7 @@ module.exports = Workflowy = (function () {
           if (/Please enter a correct username and password./.test(body)) {
             return Q.reject({ status: 403, message: 'Incorrect login info' });
           }
-        })
-        .then(
-          (arg) => {
-            var jar = this.jar._jar.toJSON();
-            for (c in jar.cookies) {
-              if (jar.cookies[c].key === 'sessionid') {
-                this.sessionid = jar.cookies[c].value;
-                break;
-              }
-            }
-          },
-          (err) => Q.reject(err)
-        );
+        });
     }
     return this.refresh();
   };
@@ -90,14 +72,14 @@ module.exports = Workflowy = (function () {
     };
     if (this.sessionid) {
       opts.headers = {
-        Cookie: 'sessionid=' + this.sessionid,
+        Cookie: `sessionid=${this.sessionid}`,
       };
     }
     this.meta = Q.ninvoke(this.request, 'get', opts)
       .then(utils.httpAbove299toError)
       .then((arg) => arg[1])
       .fail((err) => {
-        err.message = 'Error fetching document root: ' + err.message;
+        err.message = `Error fetching document root: ${err.message}`;
         return Q.reject(err);
       });
     const meta = await this.meta;
@@ -108,7 +90,7 @@ module.exports = Workflowy = (function () {
     this._lastTransactionId = mpti.initialMostRecentOperationTransactionId;
     this.outline = Q.resolve(mpti.rootProjectChildren);
     const outline = await this.outline;
-    // outline.splice(2, 1)
+
     if (this.resolveMirrors) {
       Workflowy.transcludeMirrors(outline);
     }
@@ -143,8 +125,7 @@ module.exports = Workflowy = (function () {
       })
         .then(utils.httpAbove299toError)
         .then((arg) => {
-          var resp = arg[0];
-          var body = arg[1];
+          const [resp, body] = arg;
           this._lastTransactionId =
             body.results[0].new_most_recent_operation_transaction_id;
           return [resp, body, timestamp];
@@ -201,15 +182,12 @@ module.exports = Workflowy = (function () {
     return map;
   };
 
-  /* modifies the tree so that mirror bullets are in all places they should be */
   Workflowy.transcludeMirrors = function (outline) {
     console.log('transcludeMirrors');
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline);
     const transcludeChildren = (arr) => {
       for (let j = 0, len = arr.length; j < len; j++) {
         const node = arr[j];
-        // console.log("node.nm", node.nm)
-        // console.log("node", node)
         const originalId =
           node.metadata &&
           (node.metadata.originalId ||
@@ -250,7 +228,7 @@ module.exports = Workflowy = (function () {
       }
     };
     addChildren(outline, 'None', false);
-    return [...set]; // array
+    return [...set];
   };
 
   function findAllBreadthFirst(topLevelNodes, search, maxResults) {
@@ -275,7 +253,7 @@ module.exports = Workflowy = (function () {
    */
 
   Workflowy.prototype.find = function (search, completed, parentCompleted) {
-    let condition, deferred, originalCondition, originalCondition2;
+    let condition, originalCondition, originalCondition2;
     if (typeof search == 'function') {
       condition = search;
     } else if (typeof search == 'string') {
@@ -341,6 +319,7 @@ module.exports = Workflowy = (function () {
     if (!Array.isArray(nodes)) {
       nodes = [nodes];
     }
+
     operations = (() => {
       var j, len, results;
       results = [];
@@ -359,6 +338,7 @@ module.exports = Workflowy = (function () {
       }
       return results;
     })();
+
     return this._update(operations).then((arg) => {
       var body, i, j, len, resp, timestamp;
       (resp = arg[0]), (body = arg[1]), (timestamp = arg[2]);
@@ -431,38 +411,31 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.update = function (nodes, newNames) {
-    var i, node, operations;
     if (!Array.isArray(nodes)) {
       nodes = [nodes];
       newNames = [newNames];
     }
-    operations = (() => {
-      var j, len, results;
-      results = [];
-      for (i = j = 0, len = nodes.length; j < len; i = ++j) {
-        node = nodes[i];
-        results.push({
-          type: 'edit',
-          data: {
-            projectid: node.id,
-            name: newNames[i],
-          },
-          undo_data: {
-            previous_last_modified: node.lm,
-            previous_name: node.nm,
-          },
-        });
-      }
-      return results;
-    })();
+
+    const operations = nodes.map((node, idx) => {
+      return {
+        type: 'edit',
+        data: {
+          projectid: node.id,
+          name: newNames[idx],
+        },
+        undo_data: {
+          previous_last_modified: node.lm,
+          previous_name: node.nm,
+        },
+      };
+    });
+
     return this._update(operations).then((arg) => {
-      var body, j, len, resp, timestamp;
-      (resp = arg[0]), (body = arg[1]), (timestamp = arg[2]);
-      for (i = j = 0, len = nodes.length; j < len; i = ++j) {
-        node = nodes[i];
-        node.nm = newNames[i];
+      const [resp, body, timestamp] = arg;
+      nodes.forEach((node, idx) => {
+        node.nm = newNames[idx];
         node.lm = timestamp;
-      }
+      });
     });
   };
 
