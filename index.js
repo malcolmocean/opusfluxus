@@ -1,61 +1,20 @@
-const Q = require("q");
-const request = require("request");
-const querystring = require("querystring");
-const uuidv4 = require("uuid/v4");
+const Q = require('q');
+const request = require('request');
+const uuidv4 = require('uuid/v4');
 
-var utils = {
-  getTimestamp: function (meta) {
-    return Math.floor(
-      (Date.now() -
-        meta.projectTreeData.mainProjectTreeInfo.dateJoinedTimestampInSeconds) /
-        60
-    );
-  },
-  makePollId: function () {
-    return (Math.random() + 1).toString(36).substr(2, 8);
-  },
-  httpAbove299toError: function (arg) {
-    var body, error, resp;
-    (resp = arg[0]), (body = arg[1]);
-    var status = resp.statusCode;
-    if (
-      !(
-        status === 302 &&
-        (resp.headers.location === "https://workflowy.com/" ||
-          resp.headers.location === "/")
-      )
-    ) {
-      if (300 <= status && status < 600) {
-        return Q.reject({
-          status: status,
-          message:
-            "Error with request " + resp.request.uri.href + ": " + status,
-          body: body,
-        });
-      }
-      if ((error = body.error)) {
-        return Q.reject({
-          status: status,
-          message: "Error with request " + resp.request.uri.href + ": " + error,
-          body: body,
-        });
-      }
-    }
-    return arg;
-  },
-};
+const utils = require('./utils');
 
 module.exports = Workflowy = (function () {
   Workflowy.clientVersion = 18;
 
   Workflowy.urls = {
-    newAuth: "https://workflowy.com/api/auth",
+    newAuth: 'https://workflowy.com/api/auth',
     // login: 'https://workflowy.com/ajax_login',
     // login: 'https://workflowy.com/accounts/login/',
     meta:
-      "https://workflowy.com/get_initialization_data?client_version=" +
+      'https://workflowy.com/get_initialization_data?client_version=' +
       Workflowy.clientVersion,
-    update: "https://workflowy.com/push_and_poll",
+    update: 'https://workflowy.com/push_and_poll',
   };
 
   function Workflowy(auth, jar) {
@@ -69,14 +28,14 @@ module.exports = Workflowy = (function () {
     this.resolveMirrors = auth.resolveMirrors !== false; // default true, since mirrors are new so there's no expected behavior and most users will want this
     if (!this.sessionid) {
       this.username = auth.username || auth.email;
-      this.password = auth.password || "";
-      this.code = auth.code || "";
+      this.password = auth.password || '';
+      this.code = auth.code || '';
       this._lastTransactionId = null;
     }
   }
 
   Workflowy.prototype.getAuthType = function (email, options = {}) {
-    return Q.ninvoke(this.request, "post", {
+    return Q.ninvoke(this.request, 'post', {
       url: Workflowy.urls.newAuth,
       form: {
         email: email,
@@ -91,26 +50,26 @@ module.exports = Workflowy = (function () {
 
   Workflowy.prototype.login = function () {
     if (!this.sessionid) {
-      return Q.ninvoke(this.request, "post", {
+      return Q.ninvoke(this.request, 'post', {
         url: Workflowy.urls.newAuth,
         form: {
           email: this.username,
-          password: this.password || "",
-          code: this.code || "",
+          password: this.password || '',
+          code: this.code || '',
         },
       })
         .then(utils.httpAbove299toError)
         .then((arg) => {
           var body = arg[1];
           if (/Please enter a correct username and password./.test(body)) {
-            return Q.reject({ status: 403, message: "Incorrect login info" });
+            return Q.reject({ status: 403, message: 'Incorrect login info' });
           }
         })
         .then(
           (arg) => {
             var jar = this.jar._jar.toJSON();
             for (c in jar.cookies) {
-              if (jar.cookies[c].key === "sessionid") {
+              if (jar.cookies[c].key === 'sessionid') {
                 this.sessionid = jar.cookies[c].value;
                 break;
               }
@@ -131,14 +90,14 @@ module.exports = Workflowy = (function () {
     };
     if (this.sessionid) {
       opts.headers = {
-        Cookie: "sessionid=" + this.sessionid,
+        Cookie: 'sessionid=' + this.sessionid,
       };
     }
-    this.meta = Q.ninvoke(this.request, "get", opts)
+    this.meta = Q.ninvoke(this.request, 'get', opts)
       .then(utils.httpAbove299toError)
       .then((arg) => arg[1])
       .fail((err) => {
-        err.message = "Error fetching document root: " + err.message;
+        err.message = 'Error fetching document root: ' + err.message;
         return Q.reject(err);
       });
     const meta = await this.meta;
@@ -165,7 +124,7 @@ module.exports = Workflowy = (function () {
         operation = operations[j];
         operation.client_timestamp = timestamp;
       }
-      return Q.ninvoke(this.request, "post", {
+      return Q.ninvoke(this.request, 'post', {
         url: Workflowy.urls.update,
         form: {
           client_id: clientId,
@@ -179,7 +138,7 @@ module.exports = Workflowy = (function () {
           ]),
         },
         headers: {
-          Cookie: "sessionid=" + this.sessionid,
+          Cookie: 'sessionid=' + this.sessionid,
         },
       })
         .then(utils.httpAbove299toError)
@@ -244,7 +203,7 @@ module.exports = Workflowy = (function () {
 
   /* modifies the tree so that mirror bullets are in all places they should be */
   Workflowy.transcludeMirrors = function (outline) {
-    console.log("transcludeMirrors");
+    console.log('transcludeMirrors');
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline);
     const transcludeChildren = (arr) => {
       for (let j = 0, len = arr.length; j < len; j++) {
@@ -280,7 +239,7 @@ module.exports = Workflowy = (function () {
         child = arr[j];
         child.parentId = parentId;
         // TODO = "get this to use original parentId?"
-        if (typeof child.pcp == "undefined") {
+        if (typeof child.pcp == 'undefined') {
           child.pcp = parentCompleted;
         } else {
           child.pcp = child.pcp & parentCompleted; // for mirrors
@@ -290,7 +249,7 @@ module.exports = Workflowy = (function () {
         }
       }
     };
-    addChildren(outline, "None", false);
+    addChildren(outline, 'None', false);
     return [...set]; // array
   };
 
@@ -317,21 +276,21 @@ module.exports = Workflowy = (function () {
 
   Workflowy.prototype.find = function (search, completed, parentCompleted) {
     let condition, deferred, originalCondition, originalCondition2;
-    if (typeof search == "function") {
+    if (typeof search == 'function') {
       condition = search;
-    } else if (typeof search == "string") {
+    } else if (typeof search == 'string') {
       condition = (node) => node.nm === search;
     } else if (search instanceof RegExp) {
       condition = (node) => search.test(node.nm);
     } else if (search) {
-      throw new Error("unknown search type");
+      throw new Error('unknown search type');
     }
-    if (typeof completed == "boolean") {
+    if (typeof completed == 'boolean') {
       originalCondition = condition;
       condition = (node) =>
         Boolean(node.cp) === !!completed && originalCondition(node);
     }
-    if (typeof parentCompleted == "boolean") {
+    if (typeof parentCompleted == 'boolean') {
       originalCondition2 = condition;
       condition = (node) =>
         Boolean(node.pcp) === !!parentCompleted && originalCondition2(node);
@@ -355,7 +314,7 @@ module.exports = Workflowy = (function () {
       for (j = 0, len = nodes.length; j < len; j++) {
         node = nodes[j];
         results.push({
-          type: "delete",
+          type: 'delete',
           data: {
             projectid: node.id,
           },
@@ -388,7 +347,7 @@ module.exports = Workflowy = (function () {
       for (j = 0, len = nodes.length; j < len; j++) {
         node = nodes[j];
         results.push({
-          type: tf ? "complete" : "uncomplete",
+          type: tf ? 'complete' : 'uncomplete',
           data: {
             projectid: node.id,
           },
@@ -419,7 +378,7 @@ module.exports = Workflowy = (function () {
     nodeArray,
     priority
   ) {
-    if (typeof parentid !== "string") {
+    if (typeof parentid !== 'string') {
       throw new Error("must provide parentid (use 'None' for top-level)");
     }
     for (let node of nodeArray) {
@@ -432,7 +391,7 @@ module.exports = Workflowy = (function () {
     topNode,
     priority
   ) {
-    if (typeof parentid !== "string") {
+    if (typeof parentid !== 'string') {
       throw new Error("must provide parentid (use 'None' for top-level)");
     }
     return this.create(parentid, topNode.nm, priority, topNode.no)
@@ -450,15 +409,15 @@ module.exports = Workflowy = (function () {
     var projectid = uuidv4();
     var operations = [
       {
-        type: "create",
+        type: 'create',
         data: {
           projectid: projectid,
-          parentid: parentid || "None",
+          parentid: parentid || 'None',
           priority: priority || 0, // 0 adds as first child, 1 as second, etc
         },
       },
       {
-        type: "edit",
+        type: 'edit',
         data: {
           projectid: projectid,
           name: name,
@@ -483,7 +442,7 @@ module.exports = Workflowy = (function () {
       for (i = j = 0, len = nodes.length; j < len; i = ++j) {
         node = nodes[i];
         results.push({
-          type: "edit",
+          type: 'edit',
           data: {
             projectid: node.id,
             name: newNames[i],
@@ -510,10 +469,6 @@ module.exports = Workflowy = (function () {
   return Workflowy;
 })();
 
-module.exports.cli = require("./wf.js").run;
-module.exports.loadWfConfig = require("./wf.js").loadWfConfig;
-module.exports.writeWfConfig = require("./wf.js").writeWfConfig;
-
-// ---
-// generated by coffee-script 1.9.2
-// code adapted from https://github.com/ruxi/workflowy
+module.exports.cli = require('./wf.js').run;
+module.exports.loadWfConfig = require('./wf.js').loadWfConfig;
+module.exports.writeWfConfig = require('./wf.js').writeWfConfig;

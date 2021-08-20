@@ -1,18 +1,19 @@
-#! /usr/bin/env node
+const fs = require('fs');
 
-const fs = require("fs");
 const userhome =
-  process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"];
-const config_path = userhome + "/.wfconfig.json";
+  process.env[process.platform == 'win32' ? 'USERPROFILE' : 'HOME'];
+
+const config_path = userhome + '/.wfconfig.json';
+
 function loadWfConfig() {
   let exists = fs.existsSync(config_path);
   let config = { aliases: {} };
   if (fs.existsSync(config_path)) {
-    let configString = fs.readFileSync(config_path, "utf8");
+    let configString = fs.readFileSync(config_path, 'utf8');
     try {
       return JSON.parse(configString);
     } catch (err) {
-      console.log("Error parsing JSON string:", err);
+      console.log('Error parsing JSON string:', err);
       return { aliases: {} };
     }
   } else {
@@ -21,7 +22,7 @@ function loadWfConfig() {
       config.sessionid = sessionid;
       try {
         // console.log("would unlink here")
-        fs.unlinkSync(userhome + "/.wfrc");
+        fs.unlinkSync(userhome + '/.wfrc');
       } catch (err) {}
     }
     fs.writeFileSync(config_path, JSON.stringify(config));
@@ -34,13 +35,13 @@ function writeWfConfig(config) {
   try {
     fs.writeFileSync(config_path, JSON.stringify(config));
   } catch (err) {
-    console.log("Could not write wfconfig file.", err);
+    console.log('Could not write wfconfig file.', err);
   }
 }
 
 function tryConvertingWfrcFile() {
-  const rc_path = userhome + "/.wfrc";
-  const rc = fs.existsSync(rc_path) && fs.readFileSync(rc_path, "utf8");
+  const rc_path = userhome + '/.wfrc';
+  const rc = fs.existsSync(rc_path) && fs.readFileSync(rc_path, 'utf8');
   rc_regex = /sessionid: (\w+)/;
   if (rc && rc_regex.test(rc)) {
     return rc.match(rc_regex)[1];
@@ -50,8 +51,8 @@ function tryConvertingWfrcFile() {
 function run(argv) {
   argv = argv || { _: [] };
 
-  const Workflowy = require("./");
-  const Q = require("q");
+  const Workflowy = require('./');
+  const Q = require('q');
 
   function handleErr(reason) {
     while (reason.reason) {
@@ -63,7 +64,7 @@ function run(argv) {
       );
       return auth();
     } else {
-      console.log("Error " + reason.status + ": ", reason.message);
+      console.log('Error ' + reason.status + ': ', reason.message);
       process.exit(1);
     }
   }
@@ -81,19 +82,19 @@ function run(argv) {
       return;
     }
     if (!prefix) {
-      prefix = "\u21b3 ";
+      prefix = '\u21b3 ';
     }
     if (!spaces) {
-      spaces = "";
+      spaces = '';
     }
-    var println = "";
+    var println = '';
     println = spaces + prefix + node.nm;
     if (withnote && node.no) {
-      println += "\n" + spaces + "    " + node.no;
+      println += '\n' + spaces + '    ' + node.no;
     }
 
     if (withid) {
-      println += "\n[" + node.id + "]";
+      println += '\n[' + node.id + ']';
     }
 
     console.log(println);
@@ -104,7 +105,7 @@ function run(argv) {
 
     var children = node.ch;
     for (var i in children) {
-      recursivePrint(children[i], prefix, spaces + " ", maxDepth - 1);
+      recursivePrint(children[i], prefix, spaces + ' ', maxDepth - 1);
     }
   }
 
@@ -112,7 +113,7 @@ function run(argv) {
     if (
       id != undefined &&
       !id.match(
-        "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       )
     ) {
       // id not uuid, used alias
@@ -122,81 +123,81 @@ function run(argv) {
   }
 
   function printHelp() {
-    console.log("usage: wf <command> [<args>]\n");
-    console.log("The commands currently available are:\n");
+    console.log('usage: wf <command> [<args>]\n');
+    console.log('The commands currently available are:\n');
     console.log(
-      " tree n                     " +
-        "print your workflowy nodes up to depth n (default: 2)"
+      ' tree n                     ' +
+        'print your workflowy nodes up to depth n (default: 2)'
     );
     console.log(
-      "   [--id=<id/alias>]           " +
-        "print sub nodes under the <id> (default: whole tree)"
+      '   [--id=<id/alias>]           ' +
+        'print sub nodes under the <id> (default: whole tree)'
     );
     console.log(
-      "   [--withnote]                " +
-        "print the note of nodes (default: false)"
+      '   [--withnote]                ' +
+        'print the note of nodes (default: false)'
     );
     console.log(
-      "   [--hiddencompleted]         " +
-        "hide the completed lists (default: false)"
+      '   [--hiddencompleted]         ' +
+        'hide the completed lists (default: false)'
     );
     console.log(
-      "   [--withid]                  " + "print id of nodes (default: false)"
+      '   [--withid]                  ' + 'print id of nodes (default: false)'
     );
-    console.log("");
+    console.log('');
     console.log(
-      " capture                    " + "add something to a particular node"
-    );
-    console.log(
-      "    --parentid=<id/alias>       " +
-        "36-digit uuid of parent (required) or defined alias"
+      ' capture                    ' + 'add something to a particular node'
     );
     console.log(
-      "    --name=<str>                " +
-        "what to actually put on the node (required)"
+      '    --parentid=<id/alias>       ' +
+        '36-digit uuid of parent (required) or defined alias'
     );
     console.log(
-      "   [--priority=<int>]               " +
-        "0 as first child, 1 as second (default 0 (top))"
+      '    --name=<str>                ' +
+        'what to actually put on the node (required)'
     );
     console.log(
-      "                                " +
-        "    (use a number like 10000 for bottom)"
+      '   [--priority=<int>]               ' +
+        '0 as first child, 1 as second (default 0 (top))'
     );
     console.log(
-      "   [--note=<str>]               " + "a note for the node (default '')"
-    );
-    console.log("");
-    console.log(
-      " alias                      " + "list all curretnly defined aliases"
-    );
-    console.log("");
-    console.log(" alias add                  " + "add new alias");
-    console.log(
-      "    --id=<id>                   " + "36-digit uuid to alias (required)"
+      '                                ' +
+        '    (use a number like 10000 for bottom)'
     );
     console.log(
-      "    --name=<alias>              " + "name to give the alias (required)"
+      '   [--note=<str>]               ' + "a note for the node (default '')"
     );
-    console.log("");
-    console.log(" alias remove               " + "remove existing alias");
+    console.log('');
     console.log(
-      "    --name=<str>                " + "name to give the alias (required)"
+      ' alias                      ' + 'list all curretnly defined aliases'
     );
-    console.log("");
+    console.log('');
+    console.log(' alias add                  ' + 'add new alias');
+    console.log(
+      '    --id=<id>                   ' + '36-digit uuid to alias (required)'
+    );
+    console.log(
+      '    --name=<alias>              ' + 'name to give the alias (required)'
+    );
+    console.log('');
+    console.log(' alias remove               ' + 'remove existing alias');
+    console.log(
+      '    --name=<str>                ' + 'name to give the alias (required)'
+    );
+    console.log('');
   }
 
   var command = argv._[0];
   async function runCommand() {
-    if (command === "alias") {
+    if (command === 'alias') {
       verb = argv._[1];
-      if (verb === "add") {
+      if (verb === 'add') {
         aliases[argv.name] = argv.id;
         writeWfConfig(config);
         console.log(
           "Added new alias '" + argv.name + "' for id '" + argv.id + "'"
         );
-      } else if (verb === "remove") {
+      } else if (verb === 'remove') {
         delete aliases[argv.name];
         writeWfConfig(config);
         console.log("Removed alias for name '" + argv.name + "'");
@@ -211,21 +212,21 @@ function run(argv) {
       includeSharedProjects: config.includeSharedProjects,
     });
     await wf.refresh();
-    if (command === "capture") {
-      console.log("• • • creating workflowy node • • •");
+    if (command === 'capture') {
+      console.log('• • • creating workflowy node • • •');
       var parentid = apply_alias(argv.parentid);
-      parentid && console.log("parentid", parentid);
+      parentid && console.log('parentid', parentid);
       var priority = argv.priority;
       var name = argv.name;
       var note = argv.note;
       return wf
         .create(parentid, name, priority, note)
         .then(function (result) {
-          console.log("created!");
+          console.log('created!');
         }, handleErr)
         .fin(() => process.exit());
-    } else if (command === "tree") {
-      console.log("• • • fetching workflowy tree • • •");
+    } else if (command === 'tree') {
+      console.log('• • • fetching workflowy tree • • •');
       depth = argv.depth || argv._[1] || 2;
       id = apply_alias(argv.id);
       withnote = argv.withnote;
@@ -239,9 +240,9 @@ function run(argv) {
               return node.id == id;
             });
             if (node) {
-              recursivePrint(node, null, "", depth);
+              recursivePrint(node, null, '', depth);
             } else {
-              console.log("node " + id + " not found");
+              console.log('node ' + id + ' not found');
             }
           }, handleErr)
           .fin(() => process.exit());
@@ -249,60 +250,60 @@ function run(argv) {
         return wf.outline
           .then(function (outline) {
             var rootnode = {
-              nm: "root",
+              nm: 'root',
               ch: outline,
-              id: "",
+              id: '',
             };
-            recursivePrint(rootnode, null, "", depth);
+            recursivePrint(rootnode, null, '', depth);
           }, handleErr)
           .fin(() => process.exit());
       }
-    } else if (command === "create_tree_demo") {
-      console.log("🌲 🌲 🌲 create tree demo 🌲 🌲 🌲");
+    } else if (command === 'create_tree_demo') {
+      console.log('🌲 🌲 🌲 create tree demo 🌲 🌲 🌲');
       return wf
-        .createTree("None", {
-          nm: "test " + Math.ceil(100 * Math.random()),
-          no: "" + new Date(),
+        .createTree('None', {
+          nm: 'test ' + Math.ceil(100 * Math.random()),
+          no: '' + new Date(),
           ch: [
-            { nm: "this is a child" },
+            { nm: 'this is a child' },
             {
-              nm: "a what?",
+              nm: 'a what?',
               ch: [
-                { nm: "a child" },
+                { nm: 'a child' },
                 {
-                  nm: "a what?",
-                  ch: [{ nm: "a child" }, { nm: "oh, a child" }],
+                  nm: 'a what?',
+                  ch: [{ nm: 'a child' }, { nm: 'oh, a child' }],
                 },
               ],
             },
           ],
         })
         .then((tree) => {
-          console.log("🌲 🌲 🌲   tree created!   🌲 🌲 🌲");
+          console.log('🌲 🌲 🌲   tree created!   🌲 🌲 🌲');
           console.log(tree); // now with IDs
         })
         .catch((err) => {
-          console.log("🌲 tree creation err:", err);
+          console.log('🌲 tree creation err:', err);
         })
         .fin(() => process.exit());
     } else {
-      console.log("• • • fetching workflowy data • • •");
+      console.log('• • • fetching workflowy data • • •');
       return wf.meta
         .then(function (meta) {
-          console.log("logged in as " + meta.settings.username);
+          console.log('logged in as ' + meta.settings.username);
           console.log(
             meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren
-              .length + " top-level nodes"
+              .length + ' top-level nodes'
           );
-          if (command === "meta") {
-            console.log("meta", meta);
-          } else if (command === "aux") {
+          if (command === 'meta') {
+            console.log('meta', meta);
+          } else if (command === 'aux') {
             console.log(
-              "meta.projectTreeData.auxiliaryProjectTreeInfos",
+              'meta.projectTreeData.auxiliaryProjectTreeInfos',
               meta.projectTreeData.auxiliaryProjectTreeInfos
             );
           } else {
-            console.log("(to view commands, run with --help)");
+            console.log('(to view commands, run with --help)');
           }
         }, handleErr)
         .fin(() => process.exit());
@@ -310,9 +311,9 @@ function run(argv) {
   }
 
   function auth(opts = {}) {
-    const prompt = require("prompt");
+    const prompt = require('prompt');
     console.log(
-      "What is your workflowy login info? This will not be saved, merely used once to authenticate."
+      'What is your workflowy login info? This will not be saved, merely used once to authenticate.'
     );
     var schema = {
       properties: {
@@ -326,13 +327,13 @@ function run(argv) {
     prompt.start();
     prompt.get(schema, function (err, result) {
       if (err) {
-        console.log("\nCANCELLED\n");
+        console.log('\nCANCELLED\n');
         process.exit(1);
       }
       const email = result.email;
       wf.getAuthType(email).then(
         (authType) => {
-          if (authType == "password") {
+          if (authType == 'password') {
             schema = {
               properties: {
                 password: {
@@ -341,7 +342,7 @@ function run(argv) {
                 },
               },
             };
-          } else if (authType == "code") {
+          } else if (authType == 'code') {
             console.log(
               `An email has been sent to ${email} with a login code. Enter that code here:`
             );
@@ -349,7 +350,7 @@ function run(argv) {
           }
           prompt.get(schema, function (err, result2) {
             if (err) {
-              console.log("\nCANCELLED\n");
+              console.log('\nCANCELLED\n');
               process.exit(1);
             }
             wf = new Workflowy({
@@ -361,14 +362,14 @@ function run(argv) {
               .then(function () {
                 if (wf.sessionid) {
                   deferred.resolve(
-                    "Successfully wrote sessionid to " + config_path
+                    'Successfully wrote sessionid to ' + config_path
                   );
                 } else {
-                  deferred.reject(new Error("Failed to get sessionid"));
+                  deferred.reject(new Error('Failed to get sessionid'));
                 }
               })
               .catch((err) => {
-                console.log("err", err);
+                console.log('err', err);
               });
           });
         },
@@ -378,25 +379,25 @@ function run(argv) {
     return deferred.promise
       .then(
         () => {
-          console.log("Login successful.");
+          console.log('Login successful.');
           try {
             config.sessionid = wf.sessionid;
             writeWfConfig(config);
-            console.log("Successfully wrote sessionid to " + config_path);
+            console.log('Successfully wrote sessionid to ' + config_path);
           } catch (e) {
-            return console.log("Failed to write sessionid to " + config_path);
+            return console.log('Failed to write sessionid to ' + config_path);
           }
         },
         (err) => {
-          console.log("Failed to get sessionid. Check your username/password.");
+          console.log('Failed to get sessionid. Check your username/password.');
         }
       )
       .then(() => {
         if (command) {
-          console.log("command", command);
+          console.log('command', command);
           return runCommand();
         } else {
-          console.log("returning config.sessionid", config.sessionid);
+          console.log('returning config.sessionid', config.sessionid);
           return config.sessionid;
         }
       });
@@ -408,7 +409,7 @@ function run(argv) {
     return runCommand();
   } else {
     console.log(
-      "No " + config_path + " detected... starting authentication process..."
+      'No ' + config_path + ' detected... starting authentication process...'
     );
     return auth();
   }
@@ -416,7 +417,7 @@ function run(argv) {
 
 if (require.main === module) {
   // called directly
-  const argv = require("minimist")(process.argv.slice(2));
+  const argv = require('minimist')(process.argv.slice(2));
   run(argv);
 } else {
   exports.run = run;
