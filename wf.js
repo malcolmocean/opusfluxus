@@ -170,7 +170,7 @@ function run(argv) {
     );
     console.log('');
     console.log(
-      ` alias                      list all currentny defined aliases`
+      ` alias                      list all currently defined aliases`
     );
     console.log('');
     console.log(` alias add                  add new alias`);

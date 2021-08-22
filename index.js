@@ -246,21 +246,22 @@ module.exports = Workflowy = (function () {
   Workflowy.pseudoFlattenUsingSet = function (outline) {
     const set = new Set();
     const addChildren = (arr, parentId, parentCompleted) => {
-      let child, children, j, len;
-      for (j = 0, len = arr.length; j < len; j++) {
-        set.add(arr[j]);
-        child = arr[j];
+      let children;
+      arr.forEach((child) => {
+        set.add(child);
         child.parentId = parentId;
-        // TODO = "get this to use original parentId?"
-        if (typeof child.pcp == 'undefined') {
+
+        const { id, cp, pcp, ch } = child;
+
+        if (typeof pcp == 'undefined') {
           child.pcp = parentCompleted;
         } else {
-          child.pcp = child.pcp & parentCompleted; // for mirrors
+          child.pcp = pcp & parentCompleted; // for mirrors
         }
-        if ((children = child.ch)) {
-          addChildren(children, child.id, child.cp || child.pcp);
+        if ((children = ch)) {
+          addChildren(children, id, cp || pcp);
         }
-      }
+      });
     };
     addChildren(outline, 'None', false);
     return [...set];
@@ -316,38 +317,30 @@ module.exports = Workflowy = (function () {
     });
   };
 
-  Workflowy.prototype.delete = function (nodes) {
-    let node, operations;
+  Workflowy.prototype.delete = async function (nodes) {
     if (Array.isArray(nodes)) {
       nodes = [nodes];
     }
-    operations = (() => {
-      let j, len, results;
-      results = [];
-      for (j = 0, len = nodes.length; j < len; j++) {
-        node = nodes[j];
-        results.push({
-          type: 'delete',
-          data: {
-            projectid: node.id,
-          },
-          undo_data: {
-            previous_last_modified: node.lm,
-            parentid: node.parentId,
-            priority: 5,
-          },
-        });
-      }
-      return results;
-    })();
-    return this._update(operations).then(() => {
-      this.refresh();
-      return;
-    });
+
+    const operations = nodes.map((node) => ({
+      type: 'delete',
+      data: {
+        projectid: node.id,
+      },
+      undo_data: {
+        previous_last_modified: node.lm,
+        parentid: node.parentId,
+        priority: 5,
+      },
+    }));
+
+    await this._update(operations);
+    await this.refresh();
+    return Promise.resolve();
   };
 
   Workflowy.prototype.complete = function (nodes, tf) {
-    let node, operations;
+    let operations;
     if (tf == null) {
       tf = true;
     }
