@@ -5,7 +5,6 @@ const userhome =
 
 const config_path = `${userhome}/.wfconfig.json`;
 
-// https://scotthannen.org/blog/2016/03/03/second-look-at-promises-native-es6.html
 Promise.deferred = function () {
   let result = {};
   result.promise = new Promise(function (resolve, reject) {
@@ -61,7 +60,7 @@ function tryConvertingWfrcFile() {
 function run(argv) {
   argv = argv || { _: [] };
 
-  const WorkflowyClient = require('./');
+  const WorkflowyClient = require('.');
 
   function handleErr(reason) {
     while (reason.reason) {
