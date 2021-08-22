@@ -48,8 +48,9 @@ module.exports = Workflowy = (function () {
     });
     const body = await response.json();
 
+    utils.httpAbove299toError({ response, body });
+
     return body.authType;
-    // TODO check .then(utils.httpAbove299toError)
   };
 
   Workflowy.prototype.login = async function () {
@@ -70,7 +71,8 @@ module.exports = Workflowy = (function () {
       });
       const body = await response.json();
 
-      // TODO check this: .then(utils.httpAbove299toError)
+      utils.httpAbove299toError({ response, body });
+
       if (/Please enter a correct username and password./.test(body)) {
         throw Error('Incorrect login info');
       }
@@ -94,11 +96,10 @@ module.exports = Workflowy = (function () {
               }
             : {},
         });
-        // TODO error check this
-        //   .then(utils.httpAbove299toError)
 
-        const result = await response.json();
-        return result;
+        const body = await response.json();
+        utils.httpAbove299toError({ response, body });
+        return body;
       } catch (err) {
         console.error(`Error fetching document root: ${err.message}`);
       }
@@ -159,7 +160,7 @@ module.exports = Workflowy = (function () {
 
       this._lastTransactionId =
         body.results[0].new_most_recent_operation_transaction_id;
-      return [body, body, timestamp];
+      return { response, body, timestamp };
     } catch (err) {
       console.log('i', err);
     }
@@ -337,7 +338,7 @@ module.exports = Workflowy = (function () {
     return Promise.resolve();
   };
 
-  Workflowy.prototype.complete = function (nodes, tf) {
+  Workflowy.prototype.complete = async function (nodes, tf) {
     if (tf == null) {
       tf = true;
     }
@@ -355,16 +356,14 @@ module.exports = Workflowy = (function () {
       },
     }));
 
-    return this._update(operations).then((arg) => {
-      const [resp, body, timestamp] = arg;
+    const { timestamp } = await this._update(operations);
 
-      nodes.forEach((node) => {
-        if (tf) {
-          node.cp = timestamp;
-        } else {
-          delete node.cp;
-        }
-      });
+    nodes.forEach((node) => {
+      if (tf) {
+        node.cp = timestamp;
+      } else {
+        delete node.cp;
+      }
     });
   };
 
@@ -400,7 +399,7 @@ module.exports = Workflowy = (function () {
       .then(() => topNode);
   };
 
-  Workflowy.prototype.create = function (
+  Workflowy.prototype.create = async function (
     parentid = 'None',
     name,
     priority = 0,
@@ -425,9 +424,8 @@ module.exports = Workflowy = (function () {
         },
       },
     ];
-    return this._update(operations)
-      .then(utils.httpAbove299toError)
-      .then(() => ({ id: projectid }));
+    await this._update(operations).then(utils.httpAbove299toError);
+    return { id: projectid };
   };
 
   Workflowy.prototype.update = async function (nodes, newNames) {
@@ -447,12 +445,11 @@ module.exports = Workflowy = (function () {
       };
     });
 
-    return this._update(operations).then((arg) => {
-      const [resp, body, timestamp] = arg;
-      nodes.forEach((node, idx) => {
-        node.nm = newNames[idx];
-        node.lm = timestamp;
-      });
+    const { timestamp } = await this._update(operations);
+
+    nodes.forEach((node, idx) => {
+      node.nm = newNames[idx];
+      node.lm = timestamp;
     });
   };
 

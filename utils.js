@@ -12,8 +12,7 @@ const utils = {
   makePollId: function () {
     return (Math.random() + 1).toString(36).substr(2, 8);
   },
-  httpAbove299toError: function (arg) {
-    const [resp, body] = arg;
+  httpAbove299toError: function ({ response: resp, body }) {
     var status = resp.statusCode;
     if (
       !(
@@ -32,7 +31,7 @@ const utils = {
         );
       }
     }
-    return arg;
+    return;
   },
 };
 
