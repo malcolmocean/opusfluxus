@@ -7,18 +7,17 @@ const { FormData } = require('formdata-node');
 const { FormDataEncoder } = require('form-data-encoder');
 const fetch = require('node-fetch');
 
-module.exports = Workflowy = (function () {
-  Workflowy.clientVersion = 18;
+const CLIENT_VERSION = 18;
+const URLS = {
+  newAuth: 'https://workflowy.com/api/auth',
+  // login: 'https://workflowy.com/ajax_login',
+  // login: 'https://workflowy.com/accounts/login/',
+  meta: `https://workflowy.com/get_initialization_data?client_version=${CLIENT_VERSION}`,
+  update: 'https://workflowy.com/push_and_poll',
+};
 
-  Workflowy.urls = {
-    newAuth: 'https://workflowy.com/api/auth',
-    // login: 'https://workflowy.com/ajax_login',
-    // login: 'https://workflowy.com/accounts/login/',
-    meta: `https://workflowy.com/get_initialization_data?client_version=${Workflowy.clientVersion}`,
-    update: 'https://workflowy.com/push_and_poll',
-  };
-
-  function Workflowy(auth) {
+module.exports = class WorkflowyClient {
+  constructor(auth) {
     this.sessionid = auth.sessionid;
     this.includeSharedProjects = auth.includeSharedProjects;
     this.resolveMirrors = auth.resolveMirrors !== false; // default true, since mirrors are new so there's no expected behavior and most users will want this
@@ -29,8 +28,7 @@ module.exports = Workflowy = (function () {
       this._lastTransactionId = null;
     }
   }
-
-  Workflowy.prototype.getAuthType = async function (email, options = {}) {
+  async getAuthType(email, options = {}) {
     const form = new FormData();
     form.set('email', email);
     form.set('allowSignup', options.allowSignup || false);
@@ -38,7 +36,7 @@ module.exports = Workflowy = (function () {
     form.set('push_poll_data', pushPollData);
 
     const encoder = new FormDataEncoder(form);
-    const response = await fetch(Workflowy.urls.newAuth, {
+    const response = await fetch(URLS.newAuth, {
       method: 'POST',
       body: Readable.from(encoder),
       headers: {
@@ -51,17 +49,16 @@ module.exports = Workflowy = (function () {
     utils.httpAbove299toError({ response, body });
 
     return body.authType;
-  };
-
-  Workflowy.prototype.login = async function () {
+  }
+  async login() {
     if (!this.sessionid) {
       const form = new FormData();
       form.set('email', clientId);
-      form.set('password', Workflowy.clientVersion);
+      form.set('password', CLIENT_VERSION);
       form.set('code', utils.makePollId());
 
       const encoder = new FormDataEncoder(form);
-      const response = await fetch(Workflowy.urls.newAuth, {
+      const response = await fetch(URLS.newAuth, {
         method: 'POST',
         body: Readable.from(encoder),
         headers: {
@@ -79,16 +76,15 @@ module.exports = Workflowy = (function () {
       return body;
     }
     return this.refresh();
-  };
-
-  Workflowy.prototype.refresh = async function () {
+  }
+  async refresh() {
     if (!this.sessionid) {
       await this.login();
     }
 
     this.meta = async () => {
       try {
-        const response = await fetch(Workflowy.urls.meta, {
+        const response = await fetch(URLS.meta, {
           method: 'GET',
           headers: this.sessionid
             ? {
@@ -108,21 +104,20 @@ module.exports = Workflowy = (function () {
     const meta = await this.meta();
 
     if (this.includeSharedProjects) {
-      Workflowy.transcludeShares(meta);
+      WorkflowyClient.transcludeShares(meta);
     }
     const mpti = meta.projectTreeData.mainProjectTreeInfo;
     this._lastTransactionId = mpti.initialMostRecentOperationTransactionId;
     this.outline = mpti.rootProjectChildren;
 
     if (this.resolveMirrors) {
-      Workflowy.transcludeMirrors(this.outline);
+      WorkflowyClient.transcludeMirrors(this.outline);
     }
-    this.nodes = Workflowy.pseudoFlattenUsingSet(this.outline);
+    this.nodes = WorkflowyClient.pseudoFlattenUsingSet(this.outline);
 
     return this.nodes;
-  };
-
-  Workflowy.prototype._update = async function (operations) {
+  }
+  async _update(operations) {
     const meta = await this.meta();
 
     const clientId = meta.projectTreeData.clientId;
@@ -141,14 +136,14 @@ module.exports = Workflowy = (function () {
 
     const form = new FormData();
     form.set('client_id', clientId);
-    form.set('client_version', Workflowy.clientVersion);
+    form.set('client_version', CLIENT_VERSION);
     form.set('push_poll_id', utils.makePollId());
     form.set('push_poll_data', pushPollData);
 
     const encoder = new FormDataEncoder(form);
 
     try {
-      const response = await fetch(Workflowy.urls.update, {
+      const response = await fetch(URLS.update, {
         method: 'POST',
         body: Readable.from(encoder),
         headers: {
@@ -172,124 +167,12 @@ module.exports = Workflowy = (function () {
     //         body.results[0].new_most_recent_operation_transaction_id;
     //       return [resp, body, timestamp];
     //     });
-  };
-
-  /* modifies the tree so that shared projects are added in */
-  Workflowy.transcludeShares = function (meta) {
-    const howManyShares = meta.projectTreeData.auxiliaryProjectTreeInfos.length;
-    if (!howManyShares) {
-      return;
-    }
-    const auxProjectsByShareId = {};
-    meta.projectTreeData.auxiliaryProjectTreeInfos.map((x) => {
-      if (x && x.rootProject && x.rootProject.shared) {
-        auxProjectsByShareId[x.rootProject.shared.share_id] = x;
-      }
-    });
-    const topLevelNodes =
-      meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren;
-    const shareEntryPoints = findAllBreadthFirst(
-      topLevelNodes,
-      (node) => node.as,
-      howManyShares
-    );
-    shareEntryPoints.map((node) => {
-      const auxP = auxProjectsByShareId[node.as];
-      if (!auxP) {
-        return;
-      } // happens with certain templates
-      node.nm = auxP.rootProject.nm;
-      node.ch = auxP.rootProjectChildren;
-    });
-  };
-
-  Workflowy.getNodesByIdMap = function (outline) {
-    const map = {};
-
-    const mapChildren = (arr) => {
-      arr.forEach((node) => {
-        map[node.id] = node;
-        if (node.ch) {
-          mapChildren(node.ch);
-        }
-      });
-    };
-    mapChildren(outline);
-
-    return map;
-  };
-
-  Workflowy.transcludeMirrors = function (outline) {
-    const nodesByIdMap = Workflowy.getNodesByIdMap(outline);
-    const transcludeChildren = (arr) => {
-      for (let j = 0, len = arr.length; j < len; j++) {
-        const node = arr[j];
-        const originalId =
-          node.metadata &&
-          (node.metadata.originalId ||
-            (node.metadata.mirror && node.metadata.mirror.originalId));
-        if (originalId) {
-          const originalNode = nodesByIdMap[originalId];
-          if (originalNode) {
-            arr[j] = originalNode;
-          } else {
-            // shouldn't happen; did when I was doing weird stuff in testing
-          }
-        } else {
-          // only do children when considering in original situation
-          arr[j].ch && transcludeChildren(arr[j].ch);
-        }
-      }
-    };
-    transcludeChildren(outline);
-  };
-
-  Workflowy.pseudoFlattenUsingSet = function (outline) {
-    const set = new Set();
-    const addChildren = (arr, parentId, parentCompleted) => {
-      let children;
-      arr.forEach((child) => {
-        set.add(child);
-        child.parentId = parentId;
-
-        const { id, cp, pcp, ch } = child;
-
-        if (typeof pcp == 'undefined') {
-          child.pcp = parentCompleted;
-        } else {
-          child.pcp = pcp & parentCompleted; // for mirrors
-        }
-        if ((children = ch)) {
-          addChildren(children, id, cp || pcp);
-        }
-      });
-    };
-    addChildren(outline, 'None', false);
-    return [...set];
-  };
-
-  function findAllBreadthFirst(topLevelNodes, search, maxResults) {
-    const queue = [].concat(topLevelNodes);
-    let nodes = [];
-    while ((node = queue.shift())) {
-      if (node && search(node)) {
-        nodes.push(node);
-      } else if (node && node.ch && node.ch.length) {
-        queue.push(...node.ch);
-      }
-      if (nodes.length == maxResults) {
-        break;
-      }
-    }
-    return nodes;
   }
-
   /*
    * @search [optional]
    * @returns an array of nodes that match the given string, regex or function
    */
-
-  Workflowy.prototype.find = function (search, completed, parentCompleted) {
+  find(search, completed, parentCompleted) {
     let condition, originalCondition, originalCondition2;
     if (typeof search == 'function') {
       condition = search;
@@ -316,9 +199,8 @@ module.exports = Workflowy = (function () {
       }
       return nodes;
     });
-  };
-
-  Workflowy.prototype.delete = async function (nodes) {
+  }
+  async delete(nodes) {
     nodes = ensureArray(nodes);
 
     const operations = nodes.map((node) => ({
@@ -336,9 +218,8 @@ module.exports = Workflowy = (function () {
     await this._update(operations);
     await this.refresh();
     return Promise.resolve();
-  };
-
-  Workflowy.prototype.complete = async function (nodes, tf) {
+  }
+  async complete(nodes, tf) {
     if (tf == null) {
       tf = true;
     }
@@ -365,26 +246,16 @@ module.exports = Workflowy = (function () {
         delete node.cp;
       }
     });
-  };
-
-  Workflowy.prototype.createTrees = async function (
-    parentid,
-    nodeArray,
-    priority
-  ) {
+  }
+  async createTrees(parentid, nodeArray, priority) {
     if (typeof parentid !== 'string') {
       throw new Error("must provide parentid (use 'None' for top-level)");
     }
     for (let node of nodeArray) {
       await this.createTree(parentid, node, priority);
     }
-  };
-
-  Workflowy.prototype.createTree = async function (
-    parentid,
-    topNode,
-    priority
-  ) {
+  }
+  async createTree(parentid, topNode, priority) {
     if (typeof parentid !== 'string') {
       throw new Error("must provide parentid (use 'None' for top-level)");
     }
@@ -397,14 +268,8 @@ module.exports = Workflowy = (function () {
         return this.createTrees(topNode.id, topNode.ch, 1000000);
       })
       .then(() => topNode);
-  };
-
-  Workflowy.prototype.create = async function (
-    parentid = 'None',
-    name,
-    priority = 0,
-    note
-  ) {
+  }
+  async create(parentid = 'None', name, priority = 0, note) {
     let projectid = uuidv4();
     let operations = [
       {
@@ -426,9 +291,8 @@ module.exports = Workflowy = (function () {
     ];
     await this._update(operations).then(utils.httpAbove299toError);
     return { id: projectid };
-  };
-
-  Workflowy.prototype.update = async function (nodes, newNames) {
+  }
+  async update(nodes, newNames) {
     nodes = ensureArray(nodes);
 
     const operations = nodes.map((node, idx) => {
@@ -451,7 +315,95 @@ module.exports = Workflowy = (function () {
       node.nm = newNames[idx];
       node.lm = timestamp;
     });
-  };
+  }
+  /* modifies the tree so that shared projects are added in */
+  static transcludeShares(meta) {
+    const howManyShares = meta.projectTreeData.auxiliaryProjectTreeInfos.length;
+    if (!howManyShares) {
+      return;
+    }
+    const auxProjectsByShareId = {};
+    meta.projectTreeData.auxiliaryProjectTreeInfos.map((x) => {
+      if (x && x.rootProject && x.rootProject.shared) {
+        auxProjectsByShareId[x.rootProject.shared.share_id] = x;
+      }
+    });
+    const topLevelNodes =
+      meta.projectTreeData.mainProjectTreeInfo.rootProjectChildren;
+    const shareEntryPoints = utils.findAllBreadthFirst(
+      topLevelNodes,
+      (node) => node.as,
+      howManyShares
+    );
+    shareEntryPoints.map((node) => {
+      const auxP = auxProjectsByShareId[node.as];
+      if (!auxP) {
+        return;
+      } // happens with certain templates
+      node.nm = auxP.rootProject.nm;
+      node.ch = auxP.rootProjectChildren;
+    });
+  }
+  static getNodesByIdMap(outline) {
+    const map = {};
 
-  return Workflowy;
-})();
+    const mapChildren = (arr) => {
+      arr.forEach((node) => {
+        map[node.id] = node;
+        if (node.ch) {
+          mapChildren(node.ch);
+        }
+      });
+    };
+    mapChildren(outline);
+
+    return map;
+  }
+  static transcludeMirrors(outline) {
+    const nodesByIdMap = WorkflowyClient.getNodesByIdMap(outline);
+    const transcludeChildren = (arr) => {
+      for (let j = 0, len = arr.length; j < len; j++) {
+        const node = arr[j];
+        const originalId =
+          node.metadata &&
+          (node.metadata.originalId ||
+            (node.metadata.mirror && node.metadata.mirror.originalId));
+        if (originalId) {
+          const originalNode = nodesByIdMap[originalId];
+          if (originalNode) {
+            arr[j] = originalNode;
+          } else {
+            // shouldn't happen; did when I was doing weird stuff in testing
+          }
+        } else {
+          // only do children when considering in original situation
+          arr[j].ch && transcludeChildren(arr[j].ch);
+        }
+      }
+    };
+    transcludeChildren(outline);
+  }
+  static pseudoFlattenUsingSet(outline) {
+    const set = new Set();
+    const addChildren = (arr, parentId, parentCompleted) => {
+      let children;
+      arr.forEach((child) => {
+        set.add(child);
+        child.parentId = parentId;
+
+        const { id, cp, pcp, ch } = child;
+
+        if (typeof pcp == 'undefined') {
+          child.pcp = parentCompleted;
+        } else {
+          child.pcp = pcp & parentCompleted; // for mirrors
+        }
+        if ((children = ch)) {
+          addChildren(children, id, cp || pcp);
+        }
+      });
+    };
+    addChildren(outline, 'None', false);
+    return [...set];
+  }
+};

@@ -1,4 +1,4 @@
-const Workflowy = require('./');
+const WorkflowyClient = require('./');
 require('dotenv').config();
 
 function handleErr(reason) {
@@ -21,7 +21,7 @@ const capture = async ({
 } = {}) => {
   console.log('• • • new workflowy cxn • • •');
 
-  let wf = new Workflowy({
+  let wf = new WorkflowyClient({
     sessionid: process.env.SESSIONID,
     // includeSharedProjects: config.includeSharedProjects,
   });

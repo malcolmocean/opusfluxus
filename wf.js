@@ -61,7 +61,7 @@ function tryConvertingWfrcFile() {
 function run(argv) {
   argv = argv || { _: [] };
 
-  const Workflowy = require('./');
+  const WorkflowyClient = require('./');
 
   function handleErr(reason) {
     while (reason.reason) {
@@ -206,7 +206,7 @@ function run(argv) {
       return Promise.resolve();
     }
 
-    let wf = new Workflowy({
+    let wf = new WorkflowyClient({
       sessionid: config.sessionid,
       includeSharedProjects: config.includeSharedProjects,
     });
@@ -322,7 +322,7 @@ function run(argv) {
       },
     };
     let deferred = new Promise.deferred();
-    let wf = new Workflowy({});
+    let wf = new WorkflowyClient({});
     prompt.start();
     prompt.get(schema, function (err, result) {
       if (err) {
@@ -352,7 +352,7 @@ function run(argv) {
               console.log('\nCANCELLED\n');
               process.exit(1);
             }
-            wf = new Workflowy({
+            wf = new WorkflowyClient({
               username: email,
               password: result2.password,
               code: result2.code,

@@ -33,6 +33,21 @@ const utils = {
     }
     return;
   },
+  findAllBreadthFirst(topLevelNodes, search, maxResults) {
+    const queue = [].concat(topLevelNodes);
+    let nodes = [];
+    while ((node = queue.shift())) {
+      if (node && search(node)) {
+        nodes.push(node);
+      } else if (node && node.ch && node.ch.length) {
+        queue.push(...node.ch);
+      }
+      if (nodes.length == maxResults) {
+        break;
+      }
+    }
+    return nodes;
+  },
 };
 
 module.exports = utils;
