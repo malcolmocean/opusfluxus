@@ -318,9 +318,7 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.delete = async function (nodes) {
-    if (Array.isArray(nodes)) {
-      nodes = [nodes];
-    }
+    nodes = ensureArray(nodes);
 
     const operations = nodes.map((node) => ({
       type: 'delete',
@@ -340,29 +338,22 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.complete = function (nodes, tf) {
-    let operations;
     if (tf == null) {
       tf = true;
     }
-    if (!Array.isArray(nodes)) {
-      nodes = [nodes];
-    }
 
-    let results = [];
+    nodes = ensureArray(nodes);
 
-    nodes.forEach((node) => {
-      results.push({
-        type: tf ? 'complete' : 'uncomplete',
-        data: {
-          projectid: node.id,
-        },
-        undo_data: {
-          previous_last_modified: node.lm,
-          previous_completed: tf ? false : node.cp,
-        },
-      });
-    });
-    operations = results;
+    const operations = nodes.map((node) => ({
+      type: tf ? 'complete' : 'uncomplete',
+      data: {
+        projectid: node.id,
+      },
+      undo_data: {
+        previous_last_modified: node.lm,
+        previous_completed: tf ? false : node.cp,
+      },
+    }));
 
     return this._update(operations).then((arg) => {
       const [resp, body, timestamp] = arg;
@@ -440,10 +431,7 @@ module.exports = Workflowy = (function () {
   };
 
   Workflowy.prototype.update = async function (nodes, newNames) {
-    if (!Array.isArray(nodes)) {
-      nodes = [nodes];
-      newNames = [newNames];
-    }
+    nodes = ensureArray(nodes);
 
     const operations = nodes.map((node, idx) => {
       return {

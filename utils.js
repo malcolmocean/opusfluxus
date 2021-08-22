@@ -1,4 +1,7 @@
 const utils = {
+  ensureArray: function (val) {
+    return Array.isArray(val) ? val : [val];
+  },
   getTimestamp: function (meta) {
     return Math.floor(
       (Date.now() -
