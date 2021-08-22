@@ -29,12 +29,9 @@ const capture = async ({
   await wf.refresh();
   console.log('• • • creating workflowy node • • •');
 
-  return wf
-    .create(parentId, name, priority, note)
-    .then((result) => {
-      console.log('created!');
-    }, handleErr)
-    .fin(() => process.exit());
+  const result = await wf.create(parentId, name, priority, note);
+  console.log('created!');
+  return result;
 };
 
 if (require.main === module) {

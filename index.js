@@ -70,22 +70,29 @@ module.exports = Workflowy = (function () {
     if (!this.sessionid) {
       await this.login();
     }
-    let opts = {
-      url: Workflowy.urls.meta,
-    };
-    if (this.sessionid) {
-      opts.headers = {
-        Cookie: `sessionid=${this.sessionid}`,
-      };
-    }
-    this.meta = Q.ninvoke(this.request, 'get', opts)
-      .then(utils.httpAbove299toError)
-      .then((arg) => arg[1])
-      .fail((err) => {
-        err.message = `Error fetching document root: ${err.message}`;
-        return Q.reject(err);
+
+    this.meta = async () => {
+      const response = await fetch(Workflowy.urls.meta, {
+        method: 'GET',
+        headers: this.sessionid
+          ? {
+              Cookie: `sessionid=${this.sessionid}`,
+            }
+          : {},
       });
-    const meta = await this.meta;
+      // TODO error check this
+      //   .then(utils.httpAbove299toError)
+      //   .then((arg) => arg[1])
+      //   .fail((err) => {
+      //     err.message = `Error fetching document root: ${err.message}`;
+      //     return Q.reject(err);
+      //   });
+      const result = await response.json();
+      return result;
+    };
+
+    const meta = await this.meta();
+
     if (this.includeSharedProjects) {
       Workflowy.transcludeShares(meta);
     }
@@ -100,60 +107,60 @@ module.exports = Workflowy = (function () {
     return (this.nodes = Q.resolve(Workflowy.pseudoFlattenUsingSet(outline)));
   };
 
-  Workflowy.prototype._update = function (operations) {
-    // TODO extract meta into separate function
-    return this.meta.then((meta) => {
-      const clientId = meta.projectTreeData.clientId;
-      const timestamp = utils.getTimestamp(meta);
+  Workflowy.prototype._update = async function (operations) {
+    // TODO extract meta into separate function (meta currently on line 81)
+    const meta = await this.meta();
 
-      operations.forEach((operation) => {
-        operation.client_timestamp = timestamp;
-      });
+    const clientId = meta.projectTreeData.clientId;
+    const timestamp = utils.getTimestamp(meta);
 
-      const pushPollData = JSON.stringify([
-        {
-          most_recent_operation_transaction_id: this._lastTransactionId,
-          operations,
-        },
-      ]);
-
-      const form = new FormData();
-      form.set('client_id', clientId);
-      form.set('client_version', Workflowy.clientVersion);
-      form.set('push_poll_id', utils.makePollId());
-      form.set('push_poll_data', pushPollData);
-
-      const encoder = new FormDataEncoder(form);
-
-      const payload = {
-        method: 'POST',
-        body: Readable.from(encoder),
-        headers: {
-          ...encoder.headers,
-          Cookie: `sessionid=${this.sessionid}`,
-        },
-      };
-
-      return fetch(Workflowy.urls.update, payload)
-        .catch((err) => {
-          console.log('i', err);
-        })
-        .then((response) => {
-          return response.json();
-        })
-        .then((body) => {
-          this._lastTransactionId =
-            body.results[0].new_most_recent_operation_transaction_id;
-          return [body, body, timestamp];
-          //     .then(utils.httpAbove299toError)
-          //     .then((arg) => {
-          //       const [resp, body] = arg;
-          //       this._lastTransactionId =
-          //         body.results[0].new_most_recent_operation_transaction_id;
-          //       return [resp, body, timestamp];
-          //     });
-        });
+    operations.forEach((operation) => {
+      operation.client_timestamp = timestamp;
     });
+
+    const pushPollData = JSON.stringify([
+      {
+        most_recent_operation_transaction_id: this._lastTransactionId,
+        operations,
+      },
+    ]);
+
+    const form = new FormData();
+    form.set('client_id', clientId);
+    form.set('client_version', Workflowy.clientVersion);
+    form.set('push_poll_id', utils.makePollId());
+    form.set('push_poll_data', pushPollData);
+
+    const encoder = new FormDataEncoder(form);
+
+    const payload = {
+      method: 'POST',
+      body: Readable.from(encoder),
+      headers: {
+        ...encoder.headers,
+        Cookie: `sessionid=${this.sessionid}`,
+      },
+    };
+
+    return fetch(Workflowy.urls.update, payload)
+      .catch((err) => {
+        console.log('i', err);
+      })
+      .then((response) => {
+        return response.json();
+      })
+      .then((body) => {
+        this._lastTransactionId =
+          body.results[0].new_most_recent_operation_transaction_id;
+        return [body, body, timestamp];
+        //     .then(utils.httpAbove299toError)
+        //     .then((arg) => {
+        //       const [resp, body] = arg;
+        //       this._lastTransactionId =
+        //         body.results[0].new_most_recent_operation_transaction_id;
+        //       return [resp, body, timestamp];
+        //     });
+      });
   };
 
   /* modifies the tree so that shared projects are added in */
@@ -187,13 +194,17 @@ module.exports = Workflowy = (function () {
 
   Workflowy.getNodesByIdMap = function (outline) {
     const map = {};
+
     const mapChildren = (arr) => {
-      arr.map((node) => (map[node.id] = node));
-      for (let j = 0, len = arr.length; j < len; j++) {
-        arr[j].ch && mapChildren(arr[j].ch);
-      }
+      arr.forEach((node) => {
+        map[node.id] = node;
+        if (node.ch) {
+          mapChildren(node.ch);
+        }
+      });
     };
     mapChildren(outline);
+
     return map;
   };
 
