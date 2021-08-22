@@ -50,7 +50,7 @@ function writeWfConfig(config) {
 }
 
 function tryConvertingWfrcFile() {
-  const rc_path = userhome + '/.wfrc';
+  const rc_path = `${userhome}/.wfrc`;
   const rc = fs.existsSync(rc_path) && fs.readFileSync(rc_path, 'utf8');
   rc_regex = /sessionid: (\w+)/;
   if (rc && rc_regex.test(rc)) {
@@ -141,55 +141,49 @@ function run(argv) {
       `   [--id=<id/alias>]           print sub nodes under the <id> (default: whole tree)`
     );
     console.log(
-      '   [--withnote]                ' +
-        'print the note of nodes (default: false)'
+      `   [--withnote]                print the note of nodes (default: false)`
     );
     console.log(
-      '   [--hiddencompleted]         ' +
-        'hide the completed lists (default: false)'
+      `   [--hiddencompleted]         hide the completed lists (default: false)`
     );
     console.log(
-      '   [--withid]                  ' + 'print id of nodes (default: false)'
+      `   [--withid]                  print id of nodes (default: false)`
     );
     console.log('');
     console.log(
-      ' capture                    ' + 'add something to a particular node'
+      ` capture                    add something to a particular node`
     );
     console.log(
-      '    --parentid=<id/alias>       ' +
-        '36-digit uuid of parent (required) or defined alias'
+      `    --parentid=<id/alias>       36-digit uuid of parent (required) or defined alias`
     );
     console.log(
-      '    --name=<str>                ' +
-        'what to actually put on the node (required)'
+      `    --name=<str>                what to actually put on the node (required)`
     );
     console.log(
-      '   [--priority=<int>]               ' +
-        '0 as first child, 1 as second (default 0 (top))'
+      `   [--priority=<int>]               0 as first child, 1 as second (default 0 (top))`
     );
     console.log(
-      '                                ' +
-        '    (use a number like 10000 for bottom)'
+      `                                    (use a number like 10000 for bottom)`
     );
     console.log(
-      '   [--note=<str>]               ' + "a note for the node (default '')"
+      `   [--note=<str>]               a note for the node (default '')`
     );
     console.log('');
     console.log(
-      ' alias                      ' + 'list all currentny defined aliases'
+      ` alias                      list all currentny defined aliases`
     );
     console.log('');
-    console.log(' alias add                  ' + 'add new alias');
+    console.log(` alias add                  add new alias`);
     console.log(
-      '    --id=<id>                   ' + '36-digit uuid to alias (required)'
+      `    --id=<id>                   36-digit uuid to alias (required)`
     );
     console.log(
-      '    --name=<alias>              ' + 'name to give the alias (required)'
+      `    --name=<alias>              name to give the alias (required)`
     );
     console.log('');
-    console.log(' alias remove               ' + 'remove existing alias');
+    console.log(` alias remove               remove existing alias`);
     console.log(
-      '    --name=<str>                ' + 'name to give the alias (required)'
+      `    --name=<str>                name to give the alias (required)`
     );
     console.log('');
   }
@@ -247,7 +241,7 @@ function run(argv) {
             if (node) {
               recursivePrint(node, null, '', depth);
             } else {
-              console.log('node ' + id + ' not found');
+              console.log(`node ${id} not found`);
             }
           }, handleErr)
           .then(() => process.exit());
@@ -267,8 +261,8 @@ function run(argv) {
       console.log('🌲 🌲 🌲 create tree demo 🌲 🌲 🌲');
       return wf
         .createTree('None', {
-          nm: 'test ' + Math.ceil(100 * Math.random()),
-          no: '' + new Date(),
+          nm: `test ${Math.ceil(100 * Math.random())}`,
+          no: `${new Date()}`,
           ch: [
             { nm: 'this is a child' },
             {
