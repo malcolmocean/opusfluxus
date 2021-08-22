@@ -1,5 +1,3 @@
-const Q = require('q');
-const request = require('request');
 const uuidv4 = require('uuid/v4');
 
 const utils = require('./utils');
@@ -21,7 +19,6 @@ module.exports = Workflowy = (function () {
   };
 
   function Workflowy(auth) {
-    this.request = request.defaults({ json: true });
     this.sessionid = auth.sessionid;
     this.includeSharedProjects = auth.includeSharedProjects;
     this.resolveMirrors = auth.resolveMirrors !== false; // default true, since mirrors are new so there's no expected behavior and most users will want this
@@ -33,35 +30,51 @@ module.exports = Workflowy = (function () {
     }
   }
 
-  Workflowy.prototype.getAuthType = function (email, options = {}) {
-    return Q.ninvoke(this.request, 'post', {
-      url: Workflowy.urls.newAuth,
-      form: {
-        email: email,
-        allowSignup: options.allowSignup || false,
+  Workflowy.prototype.getAuthType = async function (email, options = {}) {
+    const form = new FormData();
+    form.set('email', email);
+    form.set('allowSignup', options.allowSignup || false);
+    form.set('push_poll_id', utils.makePollId());
+    form.set('push_poll_data', pushPollData);
+
+    const encoder = new FormDataEncoder(form);
+    const response = await fetch(Workflowy.urls.newAuth, {
+      method: 'POST',
+      body: Readable.from(encoder),
+      headers: {
+        ...encoder.headers,
+        Cookie: `sessionid=${this.sessionid}`,
       },
-    })
-      .then(utils.httpAbove299toError)
-      .then((result) => result[1].authType);
+    });
+    const body = await response.json();
+
+    return body.authType;
+    // TODO check .then(utils.httpAbove299toError)
   };
 
-  Workflowy.prototype.login = function () {
+  Workflowy.prototype.login = async function () {
     if (!this.sessionid) {
-      return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.newAuth,
-        form: {
-          email: this.username,
-          password: this.password || '',
-          code: this.code || '',
+      const form = new FormData();
+      form.set('email', clientId);
+      form.set('password', Workflowy.clientVersion);
+      form.set('code', utils.makePollId());
+
+      const encoder = new FormDataEncoder(form);
+      const response = await fetch(Workflowy.urls.newAuth, {
+        method: 'POST',
+        body: Readable.from(encoder),
+        headers: {
+          ...encoder.headers,
+          Cookie: `sessionid=${this.sessionid}`,
         },
-      })
-        .then(utils.httpAbove299toError)
-        .then((arg) => {
-          let body = arg[1];
-          if (/Please enter a correct username and password./.test(body)) {
-            return Q.reject({ status: 403, message: 'Incorrect login info' });
-          }
-        });
+      });
+      const body = await response.json();
+
+      // TODO check this: .then(utils.httpAbove299toError)
+      if (/Please enter a correct username and password./.test(body)) {
+        throw Error('Incorrect login info');
+      }
+      return body;
     }
     return this.refresh();
   };
@@ -72,23 +85,23 @@ module.exports = Workflowy = (function () {
     }
 
     this.meta = async () => {
-      const response = await fetch(Workflowy.urls.meta, {
-        method: 'GET',
-        headers: this.sessionid
-          ? {
-              Cookie: `sessionid=${this.sessionid}`,
-            }
-          : {},
-      });
-      // TODO error check this
-      //   .then(utils.httpAbove299toError)
-      //   .then((arg) => arg[1])
-      //   .fail((err) => {
-      //     err.message = `Error fetching document root: ${err.message}`;
-      //     return Q.reject(err);
-      //   });
-      const result = await response.json();
-      return result;
+      try {
+        const response = await fetch(Workflowy.urls.meta, {
+          method: 'GET',
+          headers: this.sessionid
+            ? {
+                Cookie: `sessionid=${this.sessionid}`,
+              }
+            : {},
+        });
+        // TODO error check this
+        //   .then(utils.httpAbove299toError)
+
+        const result = await response.json();
+        return result;
+      } catch (err) {
+        console.error(`Error fetching document root: ${err.message}`);
+      }
     };
 
     const meta = await this.meta();
@@ -98,17 +111,17 @@ module.exports = Workflowy = (function () {
     }
     const mpti = meta.projectTreeData.mainProjectTreeInfo;
     this._lastTransactionId = mpti.initialMostRecentOperationTransactionId;
-    this.outline = Q.resolve(mpti.rootProjectChildren);
-    const outline = await this.outline;
+    this.outline = mpti.rootProjectChildren;
 
     if (this.resolveMirrors) {
-      Workflowy.transcludeMirrors(outline);
+      Workflowy.transcludeMirrors(this.outline);
     }
-    return (this.nodes = Q.resolve(Workflowy.pseudoFlattenUsingSet(outline)));
+    this.nodes = Workflowy.pseudoFlattenUsingSet(this.outline);
+
+    return this.nodes;
   };
 
   Workflowy.prototype._update = async function (operations) {
-    // TODO extract meta into separate function (meta currently on line 81)
     const meta = await this.meta();
 
     const clientId = meta.projectTreeData.clientId;
@@ -133,34 +146,31 @@ module.exports = Workflowy = (function () {
 
     const encoder = new FormDataEncoder(form);
 
-    const payload = {
-      method: 'POST',
-      body: Readable.from(encoder),
-      headers: {
-        ...encoder.headers,
-        Cookie: `sessionid=${this.sessionid}`,
-      },
-    };
-
-    return fetch(Workflowy.urls.update, payload)
-      .catch((err) => {
-        console.log('i', err);
-      })
-      .then((response) => {
-        return response.json();
-      })
-      .then((body) => {
-        this._lastTransactionId =
-          body.results[0].new_most_recent_operation_transaction_id;
-        return [body, body, timestamp];
-        //     .then(utils.httpAbove299toError)
-        //     .then((arg) => {
-        //       const [resp, body] = arg;
-        //       this._lastTransactionId =
-        //         body.results[0].new_most_recent_operation_transaction_id;
-        //       return [resp, body, timestamp];
-        //     });
+    try {
+      const response = await fetch(Workflowy.urls.update, {
+        method: 'POST',
+        body: Readable.from(encoder),
+        headers: {
+          ...encoder.headers,
+          Cookie: `sessionid=${this.sessionid}`,
+        },
       });
+      const body = await response.json();
+
+      this._lastTransactionId =
+        body.results[0].new_most_recent_operation_transaction_id;
+      return [body, body, timestamp];
+    } catch (err) {
+      console.log('i', err);
+    }
+
+    //     .then(utils.httpAbove299toError)
+    //     .then((arg) => {
+    //       const [resp, body] = arg;
+    //       this._lastTransactionId =
+    //         body.results[0].new_most_recent_operation_transaction_id;
+    //       return [resp, body, timestamp];
+    //     });
   };
 
   /* modifies the tree so that shared projects are added in */
@@ -345,36 +355,32 @@ module.exports = Workflowy = (function () {
       nodes = [nodes];
     }
 
-    operations = (() => {
-      let j, len, results;
-      results = [];
-      for (j = 0, len = nodes.length; j < len; j++) {
-        node = nodes[j];
-        results.push({
-          type: tf ? 'complete' : 'uncomplete',
-          data: {
-            projectid: node.id,
-          },
-          undo_data: {
-            previous_last_modified: node.lm,
-            previous_completed: tf ? false : node.cp,
-          },
-        });
-      }
-      return results;
-    })();
+    let results = [];
+
+    nodes.forEach((node) => {
+      results.push({
+        type: tf ? 'complete' : 'uncomplete',
+        data: {
+          projectid: node.id,
+        },
+        undo_data: {
+          previous_last_modified: node.lm,
+          previous_completed: tf ? false : node.cp,
+        },
+      });
+    });
+    operations = results;
 
     return this._update(operations).then((arg) => {
-      let body, i, j, len, resp, timestamp;
-      (resp = arg[0]), (body = arg[1]), (timestamp = arg[2]);
-      for (i = j = 0, len = nodes.length; j < len; i = ++j) {
-        node = nodes[i];
+      const [resp, body, timestamp] = arg;
+
+      nodes.forEach((node) => {
         if (tf) {
           node.cp = timestamp;
         } else {
           delete node.cp;
         }
-      }
+      });
     });
   };
 
@@ -440,7 +446,7 @@ module.exports = Workflowy = (function () {
       .then(() => ({ id: projectid }));
   };
 
-  Workflowy.prototype.update = function (nodes, newNames) {
+  Workflowy.prototype.update = async function (nodes, newNames) {
     if (!Array.isArray(nodes)) {
       nodes = [nodes];
       newNames = [newNames];

@@ -1,5 +1,3 @@
-const Q = require('q');
-
 const utils = {
   getTimestamp: function (meta) {
     return Math.floor(
@@ -17,23 +15,18 @@ const utils = {
     if (
       !(
         status === 302 &&
-        (resp.headers.location === 'https://workflowy.com/' ||
-          resp.headers.location === '/')
+        ['/', 'https://workflowy.com/'].includes(resp.headers.location)
       )
     ) {
       if (300 <= status && status < 600) {
-        return Q.reject({
-          status: status,
-          message: `Error with request ${resp.request.uri.href}:${status}`,
-          body: body,
-        });
+        throw new Error(
+          `Error with request ${resp.request.uri.href}:${status}`
+        );
       }
       if (body.error) {
-        return Q.reject({
-          status: status,
-          message: `Error with request ${resp.request.uri.href}:${error}`,
-          body: body,
-        });
+        throw new Error(
+          `Error with request ${resp.request.uri.href}:${body.error}`
+        );
       }
     }
     return arg;
