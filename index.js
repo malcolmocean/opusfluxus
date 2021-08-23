@@ -7,13 +7,14 @@ const { FormData } = require('formdata-node');
 const { FormDataEncoder } = require('form-data-encoder');
 const fetch = require('node-fetch');
 
-const CLIENT_VERSION = 18;
+const WF_URL = 'https://workflowy.com';
+const CLIENT_VERSION = 23;
 const URLS = {
-  newAuth: 'https://workflowy.com/api/auth',
-  // login: 'https://workflowy.com/ajax_login',
-  // login: 'https://workflowy.com/accounts/login/',
-  meta: `https://workflowy.com/get_initialization_data?client_version=${CLIENT_VERSION}`,
-  update: 'https://workflowy.com/push_and_poll',
+  newAuth: `${WF_URL}/api/auth?client_version=${CLIENT_VERSION}`,
+  ajaxLogin: `${WF_URL}/ajax_login`,
+  login: `${WF_URL}/accounts/login/`,
+  meta: `${WF_URL}/get_initialization_data?client_version=${CLIENT_VERSION}`,
+  update: `${WF_URL}/push_and_poll`,
 };
 
 module.exports = class WorkflowyClient {
@@ -29,51 +30,54 @@ module.exports = class WorkflowyClient {
     }
   }
   async getAuthType(email, options = {}) {
-    const form = new FormData();
-    form.set('email', email);
-    form.set('allowSignup', options.allowSignup || false);
-    form.set('push_poll_id', utils.makePollId());
-    form.set('push_poll_data', pushPollData);
-
-    const encoder = new FormDataEncoder(form);
-    const response = await fetch(URLS.newAuth, {
-      method: 'POST',
-      body: Readable.from(encoder),
-      headers: {
-        ...encoder.headers,
-        Cookie: `sessionid=${this.sessionid}`,
-      },
-    });
-    const body = await response.json();
-
-    utils.httpAbove299toError({ response, body });
-
-    return body.authType;
-  }
-  async login() {
-    if (!this.sessionid) {
+    try {
       const form = new FormData();
-      form.set('email', clientId);
-      form.set('password', CLIENT_VERSION);
-      form.set('code', utils.makePollId());
+      form.set('email', email);
+      form.set('allowSignup', options.allowSignup || false);
 
       const encoder = new FormDataEncoder(form);
       const response = await fetch(URLS.newAuth, {
         method: 'POST',
         body: Readable.from(encoder),
-        headers: {
-          ...encoder.headers,
-          Cookie: `sessionid=${this.sessionid}`,
-        },
+        headers: encoder.headers,
       });
       const body = await response.json();
-
       utils.httpAbove299toError({ response, body });
+      return body.authType;
+    } catch (err) {
+      console.log(err);
+    }
+  }
+  async login() {
+    try {
+      if (!this.sessionid) {
+        const form = new FormData();
+        form.set('username', this.username);
+        form.set('password', this.password || '');
+        form.set('code', this.code || '');
 
-      if (/Please enter a correct username and password./.test(body)) {
-        throw Error('Incorrect login info');
+        const encoder = new FormDataEncoder(form);
+        const response = await fetch(URLS.ajaxLogin, {
+          method: 'POST',
+          body: Readable.from(encoder),
+          headers: encoder.headers,
+        });
+
+        const body = await response.json();
+        const cookies = utils.parseCookies(response.headers.get('set-cookie'));
+
+        this.sessionid = cookies.sessionid;
+
+        utils.httpAbove299toError({ response, body });
+
+        if (/Please enter a correct username and password./.test(body)) {
+          throw Error('Incorrect login info');
+        }
+
+        return body;
       }
-      return body;
+    } catch (err) {
+      console.error(err);
     }
     return this.refresh();
   }

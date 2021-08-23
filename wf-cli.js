@@ -1,4 +1,5 @@
 const fs = require('fs');
+const prompt = require('prompt');
 
 const userhome =
   process.env[process.platform == 'win32' ? 'USERPROFILE' : 'HOME'];
@@ -15,7 +16,6 @@ Promise.deferred = function () {
 };
 
 function loadWfConfig() {
-  let exists = fs.existsSync(config_path);
   let config = { aliases: {} };
   if (fs.existsSync(config_path)) {
     let configString = fs.readFileSync(config_path, 'utf8');
@@ -30,7 +30,6 @@ function loadWfConfig() {
     if (sessionid) {
       config.sessionid = sessionid;
       try {
-        // console.log("would unlink here")
         fs.unlinkSync(`${userhome}/.wfrc`);
       } catch (err) {}
     }
@@ -60,7 +59,7 @@ function tryConvertingWfrcFile() {
 function run(argv) {
   argv = argv || { _: [] };
 
-  const WorkflowyClient = require('.');
+  const WorkflowyClient = require('./index.js');
 
   function handleErr(reason) {
     while (reason.reason) {
@@ -309,7 +308,6 @@ function run(argv) {
   }
 
   function auth(opts = {}) {
-    const prompt = require('prompt');
     console.log(
       'What is your workflowy login info? This will not be saved, merely used once to authenticate.'
     );

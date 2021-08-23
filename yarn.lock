@@ -66,14 +66,14 @@ fetch-blob@2.1.2:
   integrity sha512-YKqtUDwqLyfyMnmbw8XD6Q8j9i/HggKtPEI+pZ1+8bvheBu78biSmNaXWusx1TauGqtUUGx/cBb1mKdq2rLYow==
 
 form-data-encoder@^1.4.3:
-  version "1.4.3"
-  resolved "https://registry.yarnpkg.com/form-data-encoder/-/form-data-encoder-1.4.3.tgz#b0975dbe5795676f211c0ff98e473eaf52b0db4a"
-  integrity sha512-ARLR/jJaj3+tlKkO7h1uvvjQcD6xCiKyg42hcG5Q4jv8uDa1IMPs81bM3BwI8BrqVEQxF9pX6tx0iLIzAvr31Q==
+  version "1.4.4"
+  resolved "https://registry.yarnpkg.com/form-data-encoder/-/form-data-encoder-1.4.4.tgz#0c6518ee21aaadc1ee0d39e2c82f60791363a0d7"
+  integrity sha512-7fHkKl/w+qxecNdv6Dy6gqAVuJ1Th4oyZd52nx0jGcgDBatMqCnIr5MtnuiFsLgEHs9HI2FufOmeHrj3obdhwA==
 
 formdata-node@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/formdata-node/-/formdata-node-4.0.0.tgz#17a0b3a2d95e5ba3d2b89402151d2870b5e26cd6"
-  integrity sha512-FGT02keIfJ5yy/PLZPwRw/LMXLvNmg6l1fbqQOW/K4bczXP9oAbKrTh6qugNwJYnqy5IrIS+teD+xWbseYmUZw==
+  version "4.0.1"
+  resolved "https://registry.yarnpkg.com/formdata-node/-/formdata-node-4.0.1.tgz#7370d752e9c53fe6c5cf1fd141dc0564172595fb"
+  integrity sha512-7qe/s/LQR4KE9zzPBg8HXRQQsgze4VtwTX9viuVOsodD5QSu7MKsNiSy5BWYDwV+kAcDTh3y7WnC5ZHK5t4Aqg==
   dependencies:
     fetch-blob "2.1.2"
     node-domexception "1.0.0"

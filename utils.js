@@ -1,4 +1,10 @@
 const utils = {
+  parseCookies: (cookies) =>
+    Object.fromEntries(
+      cookies
+        .split('; ')
+        .map((x) => x.split(/=(.*)$/, 2).map(decodeURIComponent))
+    ),
   ensureArray: function (val) {
     return Array.isArray(val) ? val : [val];
   },

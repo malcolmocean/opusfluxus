@@ -1,4 +1,4 @@
-const WorkflowyClient = require('./');
+const WorkflowyClient = require('./index');
 require('dotenv').config();
 
 function handleErr(reason) {
