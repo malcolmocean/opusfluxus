@@ -3,6 +3,10 @@
   "version": "0.1",
   "description": "NodeJS wrapper for Workflowy with CLI and Netlify function",
   "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "app"
+  ],
   "scripts": {
     "start": "cd app && yarn && yarn start",
     "test": "echo \"Error: no test specified\" && exit 1"
