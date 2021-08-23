@@ -1,4 +1,8 @@
-# opusfluxus
+# send-to-workflowy (based on opusfluxus)
+
+This repo is a work in progress to bring the unofficial workflowy NodeJS client to 2021. Readme will be updated soon.
+
+----
 
 NodeJS wrapper for WorkFlowy. Created for integration with [Complice](https://complice.co), a productivity app that's less "what are all the parts of this thing I have to do?" and more ***"what am I going to do today?"***
 

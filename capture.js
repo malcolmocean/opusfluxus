@@ -13,12 +13,7 @@ function handleErr(reason) {
   }
 }
 
-const capture = async ({
-  parentId = '401a6a24-6edd-c695-b5a6-46c2bf9a73ac',
-  name = `test node ${new Date()}`,
-  note = 'hm',
-  priority = 0,
-} = {}) => {
+const capture = async ({ parentId, name, note, priority } = {}) => {
   console.log('• • • new workflowy cxn • • •');
 
   let wf = new WorkflowyClient({
