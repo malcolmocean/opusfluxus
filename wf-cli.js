@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 const fs = require('fs');
 const prompts = require('prompts');
 
@@ -108,16 +110,9 @@ function run(argv) {
   }
 
   function apply_alias(id) {
-    if (
-      id != undefined &&
-      !id.match(
-        '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      )
-    ) {
-      // id not uuid, used alias
-      return aliases[id];
-    }
-    return id;
+    const regex =
+      '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+    return id != undefined && !id.match(regex) ? aliases[id] : id;
   }
 
   function printHelp() {
