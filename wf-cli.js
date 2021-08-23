@@ -1,19 +1,10 @@
 const fs = require('fs');
-const prompt = require('prompt');
+const prompts = require('prompts');
 
 const userhome =
   process.env[process.platform == 'win32' ? 'USERPROFILE' : 'HOME'];
 
 const config_path = `${userhome}/.wfconfig.json`;
-
-Promise.deferred = function () {
-  let result = {};
-  result.promise = new Promise(function (resolve, reject) {
-    result.resolve = resolve;
-    result.reject = reject;
-  });
-  return result;
-};
 
 function loadWfConfig() {
   let config = { aliases: {} };
@@ -204,57 +195,50 @@ function run(argv) {
       return Promise.resolve();
     }
 
-    let wf = new WorkflowyClient({
-      sessionid: config.sessionid,
-      includeSharedProjects: config.includeSharedProjects,
-    });
+    const { sessionid, includeSharedProjects } = config;
+    let wf = new WorkflowyClient({ sessionid, includeSharedProjects });
+
     await wf.refresh();
+
     if (command === 'capture') {
       console.log('• • • creating workflowy node • • •');
+
       let parentid = apply_alias(argv.parentid);
-      parentid && console.log('parentid', parentid);
-      let priority = argv.priority;
-      let name = argv.name;
-      let note = argv.note;
-      return wf
-        .create(parentid, name, priority, note)
-        .then(function (result) {
-          console.log('created!');
-        }, handleErr)
-        .then(() => process.exit());
+      if (parentid) {
+        console.log('parentid', parentid);
+      }
+
+      const { priority, name, note } = argv;
+      try {
+        const result = await wf.create(parentid, name, priority, note);
+      } catch (err) {
+        console.error(err);
+      }
+      console.log('created!');
+      process.exit();
     } else if (command === 'tree') {
       console.log('• • • fetching workflowy tree • • •');
       depth = argv.depth || argv._[1] || 2;
       id = apply_alias(argv.id);
-      withnote = argv.withnote;
-      hiddencompleted = argv.hiddencompleted;
-      withid = argv.withid;
+      const { withnote, hiddencompleted, withid } = argv;
 
       if (id) {
-        return wf.nodes
-          .then(function (nodes) {
-            let node = nodes.find(function (node) {
-              return node.id == id;
-            });
-            if (node) {
-              recursivePrint(node, null, '', depth);
-            } else {
-              console.log(`node ${id} not found`);
-            }
-          }, handleErr)
-          .then(() => process.exit());
+        let node = wf.nodes.find((node) => node.id == id);
+        if (node) {
+          recursivePrint(node, null, '', depth);
+        } else {
+          console.log(`node ${id} not found`);
+        }
       } else {
-        return wf.outline
-          .then(function (outline) {
-            let rootnode = {
-              nm: 'root',
-              ch: outline,
-              id: '',
-            };
-            recursivePrint(rootnode, null, '', depth);
-          }, handleErr)
-          .then(() => process.exit());
+        let rootnode = {
+          nm: 'root',
+          ch: wf.outline,
+          id: '',
+        };
+        recursivePrint(rootnode, null, '', depth);
       }
+
+      process.exit();
     } else if (command === 'create_tree_demo') {
       console.log('🌲 🌲 🌲 create tree demo 🌲 🌲 🌲');
       return wf
@@ -307,97 +291,61 @@ function run(argv) {
     }
   }
 
-  function auth(opts = {}) {
+  const auth = async () => {
     console.log(
       'What is your workflowy login info? This will not be saved, merely used once to authenticate.'
     );
-    let schema = {
-      properties: {
-        email: {
-          required: true,
-        },
+
+    let wf = new WorkflowyClient({});
+
+    const { email } = await prompts({
+      type: 'text',
+      name: 'email',
+      message: 'Email:',
+    });
+
+    const authType = await wf.getAuthType(email);
+
+    const schemas = {
+      password: { type: 'password', name: 'password', message: 'Password' },
+      code: {
+        type: 'text',
+        name: 'code',
+        message: `An email has been sent to ${email} with a login code. Enter that code here:`,
       },
     };
-    let deferred = new Promise.deferred();
-    let wf = new WorkflowyClient({});
-    prompt.start();
-    prompt.get(schema, function (err, result) {
-      if (err) {
-        console.log('\nCANCELLED\n');
-        process.exit(1);
-      }
-      const email = result.email;
-      wf.getAuthType(email).then(
-        (authType) => {
-          if (authType == 'password') {
-            schema = {
-              properties: {
-                password: {
-                  required: true,
-                  hidden: true,
-                },
-              },
-            };
-          } else if (authType == 'code') {
-            console.log(
-              `An email has been sent to ${email} with a login code. Enter that code here:`
-            );
-            schema = { properties: { code: { required: true } } };
-          }
-          prompt.get(schema, function (err, result2) {
-            if (err) {
-              console.log('\nCANCELLED\n');
-              process.exit(1);
-            }
-            wf = new WorkflowyClient({
-              username: email,
-              password: result2.password,
-              code: result2.code,
-            });
-            wf.login()
-              .then(function () {
-                if (wf.sessionid) {
-                  deferred.resolve(
-                    `Successfully wrote sessionid to ${config_path}`
-                  );
-                } else {
-                  deferred.reject(new Error('Failed to get sessionid'));
-                }
-              })
-              .catch((err) => {
-                console.log('err', err);
-              });
-          });
-        },
-        (err) => deferred.reject(err)
-      );
+
+    const value = await prompts(schemas[authType]);
+
+    wf = new WorkflowyClient({
+      username: email,
+      ...value,
     });
-    return deferred.promise
-      .then(
-        () => {
-          console.log('Login successful.');
-          try {
-            config.sessionid = wf.sessionid;
-            writeWfConfig(config);
-            console.log(`Successfully wrote sessionid to ${config_path}`);
-          } catch (e) {
-            return console.log(`Failed to write sessionid to ${config_path}`);
-          }
-        },
-        (err) => {
-          console.log('Failed to get sessionid. Check your username/password.');
-        }
-      )
-      .then(() => {
-        if (command) {
-          console.log('command', command);
-          return runCommand();
-        } else {
-          console.log('returning config.sessionid', config.sessionid);
-          return config.sessionid;
-        }
-      });
-  }
+
+    try {
+      await wf.login();
+    } catch (err) {
+      console.error('err', err);
+    }
+
+    console.log('Login successful.');
+
+    try {
+      config.sessionid = wf.sessionid;
+      writeWfConfig(config);
+      console.log(`Successfully wrote sessionid to ${config_path}`);
+    } catch (e) {
+      return console.log(`Failed to write sessionid to ${config_path}`);
+    }
+
+    if (command) {
+      console.log('command', command);
+      return runCommand();
+    } else {
+      console.log('returning config.sessionid', config.sessionid);
+      return config.sessionid;
+    }
+  };
 
   if (argv.help) {
     printHelp();
