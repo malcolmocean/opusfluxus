@@ -177,10 +177,11 @@ function recursivePrint(
   }
 }
 
-function applyAlias(id, aliases) {
+function applyAlias(id) {
+  const { aliases = {} } = config;
   const regex =
     '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
-  return id != undefined && !id.match(regex) ? aliases.get(id) : id;
+  return id != undefined && !id.match(regex) ? aliases[id] : id;
 }
 
 const auth = async () => {
