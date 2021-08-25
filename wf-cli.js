@@ -13,8 +13,6 @@ let config;
 const initialize = async () => {
   config = new Conf();
 
-  let id = null;
-
   if (!config.has('sessionid')) {
     console.log(`No config detected... starting authentication process...`);
     auth();
@@ -178,7 +176,7 @@ function recursivePrint(
 }
 
 function applyAlias(id) {
-  const { aliases = {} } = config;
+  const aliases = config.get('aliases');
   const regex =
     '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
   return id != undefined && !id.match(regex) ? aliases[id] : id;
