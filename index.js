@@ -79,31 +79,29 @@ module.exports = class WorkflowyClient {
     } catch (err) {
       console.error(err);
     }
-    return this.refresh();
+  }
+  async meta() {
+    try {
+      const response = await fetch(URLS.meta, {
+        method: 'GET',
+        headers: this.sessionid
+          ? {
+              Cookie: `sessionid=${this.sessionid}`,
+            }
+          : {},
+      });
+
+      const body = await response.json();
+      utils.httpAbove299toError({ response, body });
+      return body;
+    } catch (err) {
+      console.error(`Error fetching document root: ${err.message}`);
+    }
   }
   async refresh() {
     if (!this.sessionid) {
       await this.login();
     }
-
-    this.meta = async () => {
-      try {
-        const response = await fetch(URLS.meta, {
-          method: 'GET',
-          headers: this.sessionid
-            ? {
-                Cookie: `sessionid=${this.sessionid}`,
-              }
-            : {},
-        });
-
-        const body = await response.json();
-        utils.httpAbove299toError({ response, body });
-        return body;
-      } catch (err) {
-        console.error(`Error fetching document root: ${err.message}`);
-      }
-    };
 
     const meta = await this.meta();
 
@@ -157,25 +155,17 @@ module.exports = class WorkflowyClient {
       });
       const body = await response.json();
 
+      utils.httpAbove299toError({ response, body });
       this._lastTransactionId =
         body.results[0].new_most_recent_operation_transaction_id;
+
       return { response, body, timestamp };
     } catch (err) {
-      console.log('i', err);
+      console.error(err);
     }
-
-    //     .then(utils.httpAbove299toError)
-    //     .then((arg) => {
-    //       const [resp, body] = arg;
-    //       this._lastTransactionId =
-    //         body.results[0].new_most_recent_operation_transaction_id;
-    //       return [resp, body, timestamp];
-    //     });
   }
-  /*
-   * @search [optional]
-   * @returns an array of nodes that match the given string, regex or function
-   */
+
+  // @returns an array of nodes that match the given string, regex or function
   find(search, completed, parentCompleted) {
     let condition, originalCondition, originalCondition2;
     if (typeof search == 'function') {
@@ -197,12 +187,11 @@ module.exports = class WorkflowyClient {
       condition = (node) =>
         Boolean(node.pcp) === !!parentCompleted && originalCondition2(node);
     }
-    return this.nodes.then((nodes) => {
-      if (condition) {
-        nodes = nodes.filter(condition);
-      }
-      return nodes;
-    });
+
+    if (condition) {
+      nodes = nodes.filter(condition);
+    }
+    return nodes;
   }
   async delete(nodes) {
     nodes = ensureArray(nodes);
@@ -263,15 +252,15 @@ module.exports = class WorkflowyClient {
     if (typeof parentid !== 'string') {
       throw new Error("must provide parentid (use 'None' for top-level)");
     }
-    return this.create(parentid, topNode.nm, priority, topNode.no)
-      .then((newTopNode) => {
-        topNode.id = newTopNode.id;
-        if (!topNode.ch || !topNode.ch.length) {
-          return;
-        }
-        return this.createTrees(topNode.id, topNode.ch, 1000000);
-      })
-      .then(() => topNode);
+    const { nm, no, ch, id } = topNode;
+    const newTopNode = await this.create(parentid, nm, priority, no);
+
+    topNode.id = newTopNode.id;
+    if (ch && ch.length) {
+      this.createTrees(id, ch, 1000000);
+    }
+
+    return topNode;
   }
   async create(parentid = 'None', name, priority = 0, note) {
     let projectid = uuidv4();

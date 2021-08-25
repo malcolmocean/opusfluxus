@@ -39,6 +39,20 @@ const utils = {
     }
     return;
   },
+  handleErr(reason) {
+    while (reason.reason) {
+      reason = reason.reason;
+    }
+    if (reason.status == 404) {
+      console.log(
+        "It seems your sessionid has expired. Let's log you in again."
+      );
+      return auth();
+    } else {
+      console.log(`Error ${reason.status}: `, reason.message);
+      process.exit(1);
+    }
+  },
   findAllBreadthFirst(topLevelNodes, search, maxResults) {
     const queue = [].concat(topLevelNodes);
     let nodes = [];
