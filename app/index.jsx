@@ -1,7 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import CaptureForm from './components/CaptureForm';
 
-const form = <CaptureForm />;
+import { ChakraProvider } from '@chakra-ui/react';
 
-ReactDOM.render(form, document.getElementById('root'));
+import App from './App.jsx';
+
+ReactDOM.render(
+  <ChakraProvider>
+    <App />
+  </ChakraProvider>,
+  document.getElementById('root')
+);

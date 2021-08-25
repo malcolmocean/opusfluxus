@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
 import useInput from '../hooks/useInput';
+import {
+  FormControl,
+  FormLabel,
+  FormErrorMessage,
+  FormHelperText,
+} from '@chakra-ui/react';
+
+import { Button, ButtonGroup } from '@chakra-ui/react';
+import { Input } from '@chakra-ui/react';
 
 export default function CaptureForm(props) {
   const { value: text, bind: bindText, reset: resetText } = useInput('hello');
@@ -26,15 +35,21 @@ export default function CaptureForm(props) {
   return (
     <>
       <form onSubmit={handleSubmit}>
-        <label>
-          Text:
-          <input type="text" {...bindText} />
-        </label>
-        <label>
-          Note:
-          <input type="text" {...bindNote} />
-        </label>
-        <input type="submit" value="Submit" />
+        <FormControl id="email">
+          <FormLabel>Text:</FormLabel>
+          <Input type="text" {...bindText} />
+          <FormHelperText>Text to go on your new Workflowy node</FormHelperText>
+        </FormControl>
+
+        <FormControl id="email">
+          <FormLabel>Note:</FormLabel>
+          <Input type="text" {...bindNote} />
+          <FormHelperText>Add a note, why not?</FormHelperText>
+        </FormControl>
+
+        <Button colorScheme="blue" type="submit" value="Submit">
+          Submit
+        </Button>
       </form>
       {status}
     </>
