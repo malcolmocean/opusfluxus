@@ -8,9 +8,10 @@ const WorkflowyClient = require('./index.js');
 
 const { program } = require('commander');
 
+let config;
+
 const initialize = async () => {
-  const config = new Conf();
-  const aliases = config.get('aliases');
+  config = new Conf();
 
   let id = null;
 
@@ -29,17 +30,34 @@ const initialize = async () => {
 };
 
 program
-  .command('alias <verb>')
+  .option(
+    '-id, --id <id>',
+    '36-digit uuid of parent (required) or defined alias'
+  )
+  .option(
+    '-p, --priority <priority>',
+    'priority of the new node, 0 as first child',
+    0
+  )
+  .option('-i, --print-id', 'also print the node id', false)
+  .option('-n, --print-note', 'also print the note', false)
+  .option('-c, --hide-completed', 'hide completed lists', true);
+
+program
+  .command('alias [verb] [name]')
   .description('work with aliases')
-  .action((verb) => {
-    if (verb === 'add') {
-      config.set({ aliases: { [argv.name]: argv.id } });
-      console.log(`Added new alias '${argv.name}' for id '${argv.id}'`);
-    } else if (verb === 'remove') {
-      const aliases = config.get('aliases');
-      delete aliases[argv.name];
+  .action(async (verb, name) => {
+    await initialize();
+    const aliases = config.get('aliases');
+    let { id } = program.opts();
+
+    if (verb === 'add' && id) {
+      config.set({ aliases: { [name]: id } });
+      console.log(`Added new alias '${name}' for id '${id}'`);
+    } else if (verb === 'remove' && name) {
+      delete aliases[name];
       config.set('aliases', aliases);
-      console.log(`Removed alias for name '${argv.name}'`);
+      console.log(`Removed alias for name '${name}'`);
     } else {
       console.log(aliases);
     }
@@ -62,7 +80,6 @@ program
 
     const { priority, hiddencompleted, withid } = program.opts();
     try {
-      // todo use object not arguments
       const result = await wf.create(parentId, text, priority, note);
     } catch (err) {
       console.error(err);
@@ -72,7 +89,7 @@ program
 
 program
   .command('tree <depth>')
-  .description('tree depth')
+  .description('print your workflowy nodes up to depth n')
   .action(async (depth) => {
     console.log('• • • fetching workflowy tree • • •');
 
@@ -126,11 +143,6 @@ program
       console.error(err);
     }
   });
-
-program
-  .option('-i, --withid', 'also print the node id', false)
-  .option('-n, --withnote', 'also print the note', false)
-  .option('-h, --hiddencompleted', 'hide completed lists', true);
 
 function recursivePrint(
   node,
@@ -220,6 +232,4 @@ const auth = async () => {
   }
 };
 
-program.version('0.0.1');
-program.option('-id', 'specify an id');
 program.parseAsync(process.argv);
