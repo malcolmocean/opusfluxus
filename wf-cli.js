@@ -1,6 +1,5 @@
 #! /usr/bin/env node
 
-const fs = require('fs');
 const prompts = require('prompts');
 const Conf = require('conf');
 
