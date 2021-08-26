@@ -8,7 +8,7 @@
     "app"
   ],
   "scripts": {
-    "start": "cd app && yarn && yarn start",
+    "start": "cd app && yarn start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

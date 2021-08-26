@@ -10,6 +10,7 @@
     "snowpack": "^3.3.7"
   },
   "dependencies": {
+    "@chakra-ui/icons": "^1.0.15",
     "@chakra-ui/react": "^1.6.6",
     "@emotion/react": "^11",
     "@emotion/styled": "^11",

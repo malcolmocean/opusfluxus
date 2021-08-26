@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import useInput from '../hooks/useInput';
-import {
-  FormControl,
-  FormLabel,
-  FormErrorMessage,
-  FormHelperText,
-} from '@chakra-ui/react';
+import { FormControl, FormLabel, FormHelperText } from '@chakra-ui/react';
 
-import { Button, ButtonGroup } from '@chakra-ui/react';
-import { Input } from '@chakra-ui/react';
+import { Button, CircularProgress } from '@chakra-ui/react';
+import { Input, Textarea } from '@chakra-ui/react';
+
+import Message from './Message';
+
+const messages = {
+  success: 'Sent to Workflowy!',
+  error: 'Uh oh, there was a problem, check the console...',
+};
 
 export default function CaptureForm(props) {
   const { value: text, bind: bindText, reset: resetText } = useInput('hello');
@@ -18,40 +20,56 @@ export default function CaptureForm(props) {
 
   const handleSubmit = async (evt) => {
     evt.preventDefault();
-    console.log(text, note);
+
     setStatus('loading');
-    const response = await fetch('/.netlify/functions/send', {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name: text, note }),
-    });
-    setStatus('success!');
-    resetText();
-    resetNote();
+    try {
+      await fetch('/.netlify/functions/send', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: text, note }),
+      });
+      setStatus('success');
+      resetText();
+      resetNote();
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+    }
   };
   return (
     <>
       <form onSubmit={handleSubmit}>
-        <FormControl id="email">
+        {['error', 'success'].includes(status) && (
+          <Message message={messages[status]} status={status} />
+        )}
+        <FormControl id="text" mt="4">
           <FormLabel>Text:</FormLabel>
           <Input type="text" {...bindText} />
-          <FormHelperText>Text to go on your new Workflowy node</FormHelperText>
+          <FormHelperText>Text to go in your new Workflowy node</FormHelperText>
         </FormControl>
-
-        <FormControl id="email">
+        <FormControl id="note" mt="4">
           <FormLabel>Note:</FormLabel>
-          <Input type="text" {...bindNote} />
+          <Textarea type="text" {...bindNote} />
           <FormHelperText>Add a note, why not?</FormHelperText>
         </FormControl>
-
-        <Button colorScheme="blue" type="submit" value="Submit">
-          Submit
+        <Button
+          width="full"
+          mt={4}
+          variantcolor="#597e8d"
+          variant="outline"
+          type="submit"
+          value="Submit"
+        >
+          {status === 'loading' ? (
+            <CircularProgress isIndeterminate size="24px" color="teal" />
+          ) : (
+            'Send'
+          )}
         </Button>
       </form>
-      {status}
     </>
   );
 }
