@@ -2,7 +2,7 @@
   "name": "app",
   "version": "1.0.0",
   "scripts": {
-    "start": "snowpack dev",
+    "start": "snowpack dev --open none",
     "build": "snowpack build",
     "test": "echo \"This template does not include a test runner by default.\" && exit 1"
   },

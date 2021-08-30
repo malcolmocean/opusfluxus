@@ -1,42 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import CaptureForm from './components/CaptureForm';
+import React from 'react';
 import { Flex, Box, Heading } from '@chakra-ui/react';
 
-const icon = (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="68"
-    height="68"
-    viewBox="0 0 24 24"
-    strokeWidth="2.5"
-    stroke="#597e8d"
-    fill="none"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-    <path d="M12 21v-13a4 4 0 1 0 -4 4h13" />
-    <path d="M18 15l3 -3l-3 -3" />
-  </svg>
-);
+import { ArrowIcon } from './icons';
+
+import SettingsForm from './components/SettingsForm';
+import CaptureForm from './components/CaptureForm';
+import SettingsToggler from './components/SettingsToggler';
+
+import useToggle from './hooks/useToggle';
 
 function App() {
+  const [settingsShown, toggleSettings] = useToggle(false);
   return (
-    <Flex width="full" align="center" justifyContent="center">
+    <Flex
+      width="full"
+      align="center"
+      justifyContent="center"
+      direction="column"
+    >
       <Box
         p={8}
-        mt={8}
+        mt={2}
+        minWidth="500px"
         maxWidth="500px"
         borderWidth={1}
         borderRadius={8}
         boxShadow="lg"
       >
+        <Flex justifyContent="flex-end" m={0} mr={0} pt={0}>
+          <SettingsToggler
+            toggleSettings={toggleSettings}
+            settingsShown={settingsShown}
+          />
+        </Flex>
         <Flex textAlign="center" gridGap={2} alignItems="center">
-          {icon}
-          <Heading> Send to Workflowy</Heading>
+          <ArrowIcon />
+          <Heading> {settingsShown ? 'Settings' : 'Send to Workflowy'}</Heading>
         </Flex>
         <Box my={4} textAlign="left">
-          <CaptureForm />
+          {settingsShown ? <SettingsForm /> : <CaptureForm />}
         </Box>
       </Box>
     </Flex>
