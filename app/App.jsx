@@ -12,8 +12,16 @@ import useInput from './hooks/useInput';
 import useLocalStorage from './hooks/useLocalStorage';
 
 function App() {
-  const { value: sessionId, bind: bindSessionId } = useInput('sessionId', '');
-  const { value: parentId, bind: bindParentId } = useInput('parentId', '');
+  const { value: sessionId, bind: bindSessionId } = useInput(
+    'sessionId',
+    '',
+    true
+  );
+  const { value: parentId, bind: bindParentId } = useInput(
+    'parentId',
+    '',
+    true
+  );
   const [top, setTop] = useLocalStorage('addToTop', true);
 
   const [settingsShown, toggleSettings] = useToggle(false);

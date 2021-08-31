@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   FormControl,
   FormLabel,
@@ -15,8 +15,6 @@ import { ArrowUpIcon, ArrowDownIcon } from '@chakra-ui/icons';
 import { ArrowIcon } from '../icons';
 
 import SensitiveInput from './SensitiveInput';
-
-import useLocalStorage from '../hooks/useLocalStorage';
 
 export default function SettingsForm(props) {
   const { bindSessionId, bindParentId, top, setTop } = props;

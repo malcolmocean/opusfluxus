@@ -33,7 +33,7 @@ const actions = [
     requestBody: {
       parentId,
       sessionId,
-      name: shortcutInput,
+      text: shortcutInput,
       note: '',
       priority: 0,
     },
