@@ -6,12 +6,21 @@ exports.handler = async (event, context) => {
   }
 
   const {
-    parentId = process.env.PARENTID,
-    sessionId = process.env.SESSIONID,
     text = '',
     note = '',
     priority = 0,
+    ...rest
   } = JSON.parse(event.body);
+
+  let { parentId, sessionId } = rest;
+
+  if (!parentId || parentId.length === 0) {
+    parentId = process.env.PARENTID;
+  }
+
+  if (!sessionId || sessionId.length === 0) {
+    sessionId = process.env.SESSIONID;
+  }
 
   const headers = {
     'Access-Control-Allow-Origin': '*',

@@ -25,7 +25,7 @@ const capture = async ({ parentId, text, note, priority } = {}) => {
   console.log('• • • creating workflowy node • • •');
 
   const result = await wf.create(parentId, text, priority, note);
-  console.log('created!');
+  console.log('• • • created! • • •');
   return result;
 };
 
