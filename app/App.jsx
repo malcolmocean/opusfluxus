@@ -8,9 +8,16 @@ import CaptureForm from './components/CaptureForm';
 import SettingsToggler from './components/SettingsToggler';
 
 import useToggle from './hooks/useToggle';
+import useInput from './hooks/useInput';
+import useLocalStorage from './hooks/useLocalStorage';
 
 function App() {
+  const { value: sessionId, bind: bindSessionId } = useInput('sessionId', '');
+  const { value: parentId, bind: bindParentId } = useInput('parentId', '');
+  const [top, setTop] = useLocalStorage('addToTop', true);
+
   const [settingsShown, toggleSettings] = useToggle(false);
+
   return (
     <Flex
       width="full"
@@ -38,7 +45,16 @@ function App() {
           <Heading> {settingsShown ? 'Settings' : 'Send to Workflowy'}</Heading>
         </Flex>
         <Box my={4} textAlign="left">
-          {settingsShown ? <SettingsForm /> : <CaptureForm />}
+          {settingsShown ? (
+            <SettingsForm
+              bindSessionId={bindSessionId}
+              bindParentId={bindParentId}
+              setTop={setTop}
+              top={top}
+            />
+          ) : (
+            <CaptureForm sessionId={sessionId} parentId={parentId} top={top} />
+          )}
         </Box>
       </Box>
     </Flex>

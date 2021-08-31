@@ -13,8 +13,12 @@ const messages = {
 };
 
 export default function CaptureForm(props) {
-  const { value: text, bind: bindText, reset: resetText } = useInput('hello');
-  const { value: note, bind: bindNote, reset: resetNote } = useInput('hello');
+  const { parentId, sessionId, top } = props;
+
+  const priority = top ? 0 : 10000000;
+
+  const { value: text, bind: bindText, reset: resetText } = useInput('');
+  const { value: note, bind: bindNote, reset: resetNote } = useInput('');
 
   const [status, setStatus] = useState('');
 
@@ -29,7 +33,7 @@ export default function CaptureForm(props) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: text, note }),
+        body: JSON.stringify({ text, note, sessionId, parentId, priority }),
       });
       setStatus('success');
       resetText();

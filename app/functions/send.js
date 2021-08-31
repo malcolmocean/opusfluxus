@@ -7,7 +7,8 @@ exports.handler = async (event, context) => {
 
   const {
     parentId = process.env.PARENTID,
-    name = '',
+    sessionId = process.env.SESSIONID,
+    text = '',
     note = '',
     priority = 0,
   } = JSON.parse(event.body);
@@ -19,7 +20,7 @@ exports.handler = async (event, context) => {
   };
 
   try {
-    const result = await capture({ parentId, name, note, priority });
+    await capture({ parentId, sessionId, text, note, priority });
     return {
       headers,
       statusCode: 200,
