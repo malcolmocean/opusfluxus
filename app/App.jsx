@@ -36,7 +36,6 @@ function App() {
       <Box
         p={8}
         mt={2}
-        minWidth="500px"
         maxWidth="500px"
         borderWidth={1}
         borderRadius={8}
