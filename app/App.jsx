@@ -36,7 +36,7 @@ function App() {
       <Box
         p={8}
         mt={2}
-        maxWidth="500px"
+        maxWidth="320px"
         borderWidth={1}
         borderRadius={8}
         boxShadow="lg"
@@ -49,7 +49,9 @@ function App() {
         </Flex>
         <Flex textAlign="center" gridGap={2} alignItems="center">
           <ArrowIcon />
-          <Heading> {settingsShown ? 'Settings' : 'Send to Workflowy'}</Heading>
+          <Heading fontSize={['lg', 'xl']}>
+            {settingsShown ? 'Settings' : 'Send to Workflowy'}
+          </Heading>
         </Flex>
         <Box my={4} textAlign="left">
           {settingsShown ? (
