@@ -3,18 +3,18 @@ import {
   FormControl,
   FormLabel,
   FormHelperText,
-  Flex,
-  Spacer,
   Box,
   ButtonGroup,
   IconButton,
   Input,
+  Heading,
+  Text,
 } from '@chakra-ui/react';
 
 import { ArrowUpIcon, ArrowDownIcon } from '@chakra-ui/icons';
-import { ArrowIcon } from '../icons';
 
 import SensitiveInput from './SensitiveInput';
+import IntegrationIcons from './IntegrationIcons';
 
 export default function SettingsForm(props) {
   const { bindSessionId, bindParentId, top, setTop } = props;
@@ -24,20 +24,19 @@ export default function SettingsForm(props) {
   };
   return (
     <>
+      <Text mt="4" fontSize="sm">
+        Check the docs for more info on the below settings.
+      </Text>
       <form onSubmit={handleSubmit}>
         <FormControl id="session-id" mt="4">
           <FormLabel>Session ID:</FormLabel>
           <SensitiveInput {...bindSessionId} />
-          <FormHelperText>
-            Used to send to your Workflowy. Find out more here.
-          </FormHelperText>
+          <FormHelperText>Required to send to your Workflowy.</FormHelperText>
         </FormControl>
         <FormControl id="parent-id" mt="4">
           <FormLabel>Parent ID:</FormLabel>
           <Input type="text" {...bindParentId} />
-          <FormHelperText>
-            Used to tell us where to put things in Workflowy.
-          </FormHelperText>
+          <FormHelperText>The location to send to in Workflowy.</FormHelperText>
         </FormControl>
 
         <FormControl id="priority" mt="4">
@@ -63,13 +62,8 @@ export default function SettingsForm(props) {
         </ButtonGroup>
       </form>
       <Box width="full" mt={6}>
-        <Flex textAlign="center" gridGap={2} alignItems="center">
-          <ArrowIcon />
-          <Spacer />
-          <ArrowIcon />
-          <Spacer />
-          <ArrowIcon />
-        </Flex>
+        <Heading fontSize={'lg'}>{'Integrations'}</Heading>
+        <IntegrationIcons />
       </Box>
     </>
   );
