@@ -1,10 +1,10 @@
 {
   "name": "app",
-  "version": "1.0.0",
+  "version": "0.0.1",
+  "license": "MIT",
   "scripts": {
     "start": "snowpack dev --open none",
-    "build": "snowpack build",
-    "test": "echo \"This template does not include a test runner by default.\" && exit 1"
+    "build": "snowpack build"
   },
   "devDependencies": {
     "snowpack": "^3.3.7"
