@@ -9,7 +9,7 @@ import Message from './Message';
 
 const messages = {
   success: 'Sent to Workflowy!',
-  error: 'Uh oh, there was a problem, check the console...',
+  error: 'Uh oh, there was a problem...',
 };
 
 export default function CaptureForm(props) {
@@ -27,7 +27,7 @@ export default function CaptureForm(props) {
 
     setStatus('loading');
     try {
-      await fetch('/.netlify/functions/send', {
+      const response = await fetch('/send', {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -35,9 +35,13 @@ export default function CaptureForm(props) {
         },
         body: JSON.stringify({ text, note, sessionId, parentId, priority }),
       });
-      setStatus('success');
-      resetText();
-      resetNote();
+      if (response.ok) {
+        setStatus('success');
+        resetText();
+        resetNote();
+      } else {
+        throw new Error(`${response.status} - ${response.statusText}`);
+      }
     } catch (err) {
       console.error(err);
       setStatus('error');

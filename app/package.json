@@ -4,7 +4,8 @@
   "license": "MIT",
   "scripts": {
     "start": "snowpack dev --open none",
-    "build": "snowpack build"
+    "build": "snowpack build",
+    "bookmarklet": "esbuild --minify bookmarklet/bookmarklet.js --outfile=public/bookmarklet.min.js"
   },
   "devDependencies": {
     "snowpack": "^3.3.7"
@@ -14,6 +15,7 @@
     "@chakra-ui/react": "^1.6.6",
     "@emotion/react": "^11",
     "@emotion/styled": "^11",
+    "esbuild": "^0.12.24",
     "framer-motion": "^4",
     "react": "^17.0.2",
     "react-dom": "^17.0.2"

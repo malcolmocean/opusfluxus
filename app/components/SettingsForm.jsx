@@ -17,7 +17,8 @@ import SensitiveInput from './SensitiveInput';
 import IntegrationIcons from './IntegrationIcons';
 
 export default function SettingsForm(props) {
-  const { bindSessionId, bindParentId, top, setTop } = props;
+  const { bindSessionId, bindParentId, sessionId, parentId, top, setTop } =
+    props;
 
   const handleSubmit = async (evt) => {
     evt.preventDefault();
@@ -63,7 +64,7 @@ export default function SettingsForm(props) {
       </form>
       <Box width="full" mt={6}>
         <Heading fontSize={'lg'}>{'Integrations'}</Heading>
-        <IntegrationIcons />
+        <IntegrationIcons sessionId={sessionId} parentId={parentId} />
       </Box>
     </>
   );

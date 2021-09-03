@@ -2,8 +2,8 @@ import { useState } from 'react';
 
 import useLocalStorage from './useLocalStorage';
 
-const useInput = (key, initialValue, localStorage = false) => {
-  const [value, setValue] = localStorage
+const useInput = (initialValue, key) => {
+  const [value, setValue] = key
     ? useLocalStorage(key, initialValue)
     : useState(initialValue);
 

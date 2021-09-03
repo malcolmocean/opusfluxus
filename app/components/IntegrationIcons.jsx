@@ -3,7 +3,9 @@ import { Tooltip, Spacer, Flex, Link } from '@chakra-ui/react';
 
 import { AndroidIcon, AppleIcon, BookmarkIcon } from '../icons';
 
-export default function IntegrationIcons() {
+import BookmarkletLink from './BookmarkletLink';
+
+export default function IntegrationIcons({ sessionId, parentId }) {
   return (
     <Flex textAlign="center" mt={8} gridGap={2} alignItems="center">
       <Tooltip hasArrow label="Create iOS Shortcut">
@@ -22,11 +24,11 @@ export default function IntegrationIcons() {
         </span>
       </Tooltip>
       <Spacer />
-      <Tooltip hasArrow label="Create bookmarklet">
+      <Tooltip hasArrow label="Drag me to bookmark bar">
         <span>
-          <Link href="">
+          <BookmarkletLink sessionId={sessionId} parentId={parentId}>
             <BookmarkIcon />
-          </Link>
+          </BookmarkletLink>
         </span>
       </Tooltip>
     </Flex>
