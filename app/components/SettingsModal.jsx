@@ -10,6 +10,7 @@ import {
   ModalCloseButton,
   Button,
   IconButton,
+  useDisclosure,
 } from '@chakra-ui/react';
 
 import { DeleteIcon } from '@chakra-ui/icons';
@@ -28,7 +29,11 @@ export default function SettingsModal(props) {
     setParentId('');
   };
 
-  const [isConfirmOpen, setConfirmOpen] = useState(false);
+  const {
+    isOpen: isConfirmOpen,
+    onOpen: setConfirmOpen,
+    onClose: setConfirmClosed,
+  } = useDisclosure(false);
 
   return (
     <Modal
@@ -61,9 +66,10 @@ export default function SettingsModal(props) {
           <ConfirmClear
             isConfirmOpen={isConfirmOpen}
             setConfirmOpen={setConfirmOpen}
+            setConfirmClosed={setConfirmClosed}
             clear={clear}
           />
-          <Button onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>Save</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

@@ -9,12 +9,11 @@ import {
   Button,
 } from '@chakra-ui/react';
 
-export default function ConfirmClear({ isConfirmOpen, setConfirmOpen, clear }) {
-  const onClose = () => {
-    clear();
-    setConfirmOpen(false);
-  };
-
+export default function ConfirmClear({
+  isConfirmOpen,
+  setConfirmClosed,
+  clear,
+}) {
   const cancelRef = useRef();
 
   return (
@@ -22,7 +21,7 @@ export default function ConfirmClear({ isConfirmOpen, setConfirmOpen, clear }) {
       <AlertDialog
         isOpen={isConfirmOpen}
         leastDestructiveRef={cancelRef}
-        onClose={onClose}
+        onClose={setConfirmClosed}
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
@@ -36,10 +35,17 @@ export default function ConfirmClear({ isConfirmOpen, setConfirmOpen, clear }) {
             </AlertDialogBody>
 
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
+              <Button ref={cancelRef} onClick={setConfirmClosed}>
                 Cancel
               </Button>
-              <Button colorScheme="red" onClick={onClose} ml={3}>
+              <Button
+                colorScheme="red"
+                onClick={() => {
+                  clear();
+                  setConfirmClosed();
+                }}
+                ml={3}
+              >
                 Clear
               </Button>
             </AlertDialogFooter>
