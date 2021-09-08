@@ -8,7 +8,8 @@ This repository allows you to send to your Workflowy account from a variety of d
 
 - 🕸 Website
 - 🔖 Bookmarklet
-- 📱 iOS / Android (coming soon!)
+- 📱 iOS Shortcut
+- 📱 Android (coming soon!)
 - ⌨️ Command Line
 
 It helps you save links and text for later so you can concentrate on the task in hand.
@@ -18,6 +19,8 @@ It helps you save links and text for later so you can concentrate on the task in
 Workflowy doesn't have an official API so send-to-workflowy needs some configuration to talk to Workflowy. It doesn't store any of your login information or Workflowy data but it's up to you to keep your Session ID secure. 
 
 ## How to use
+
+For most users send-to-workflowy is a web application you can use or deploy yourself. The web app also provides a link to the iOS shortcut and bookmarklet to make it even easier to send to Workflowy.
 
 ### Hosted version
 
@@ -62,16 +65,17 @@ To find your parent ID:
 
 ## Future Roadmap
 
-- [ ] Android Integration
+- [ ] Android integration
 - [ ] Date support
 - [ ] Multiple parent support
+- [ ] Bookmarklet: send page selection if highlighted
+- [ ] Bookmarklet: visual confirmation of success
 - [ ] email-to-workflowy?
 - [ ] text-to-workflowy?
 
 ### Dev Improvements
 
 - [ ] Add tests
-- [ ] 
 
 ## Acknowledgements
 
