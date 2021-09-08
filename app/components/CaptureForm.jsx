@@ -8,7 +8,7 @@ import { Input, Textarea } from '@chakra-ui/react';
 import Message from './Message';
 
 const messages = {
-  success: 'Sent to Workflowy!',
+  success: 'Sent!',
   error: 'Uh oh, there was a problem...',
 };
 
