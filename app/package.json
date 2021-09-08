@@ -5,6 +5,7 @@
   "scripts": {
     "start": "snowpack dev --open none",
     "build": "snowpack build",
+    "dev": "npx netlify dev",
     "bookmarklet": "esbuild --minify bookmarklet/bookmarklet.js --outfile=public/bookmarklet.min.js"
   },
   "devDependencies": {
