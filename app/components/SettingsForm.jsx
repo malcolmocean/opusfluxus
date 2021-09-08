@@ -62,10 +62,9 @@ export default function SettingsForm(props) {
           />
         </ButtonGroup>
       </form>
-      <Box width="full" mt={6}>
+      {/* <Box width="full" mt={6}>
         <Heading fontSize={'lg'}>{'Integrations'}</Heading>
-        <IntegrationIcons sessionId={sessionId} parentId={parentId} />
-      </Box>
+      </Box> */}
     </>
   );
 }

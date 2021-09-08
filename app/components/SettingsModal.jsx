@@ -12,6 +12,7 @@ import {
 } from '@chakra-ui/react';
 
 import SettingsForm from './SettingsForm';
+import IntegrationIcons from './IntegrationIcons';
 
 export default function SettingsModal(props) {
   const {
@@ -47,6 +48,8 @@ export default function SettingsModal(props) {
           />
         </ModalBody>
         <ModalFooter>
+          <IntegrationIcons sessionId={sessionId} parentId={parentId} />
+
           <Button onClick={onClose}>Close</Button>
         </ModalFooter>
       </ModalContent>

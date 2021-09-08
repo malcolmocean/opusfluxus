@@ -42,10 +42,10 @@ export function AppleIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="68"
-      height="68"
+      width="36"
+      height="36"
       fill="none"
-      stroke="#2c3e50"
+      stroke="#000000"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="1.5"
@@ -62,10 +62,10 @@ export function AndroidIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="68"
-      height="68"
+      width="36"
+      height="36"
       fill="none"
-      stroke="#2c3e50"
+      stroke="#000000"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="1.5"
@@ -88,10 +88,10 @@ export function BookmarkIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="68"
-      height="68"
+      width="36"
+      height="36"
       fill="none"
-      stroke="#2c3e50"
+      stroke="#000000"
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth="1.5"

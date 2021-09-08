@@ -7,7 +7,7 @@ import BookmarkletLink from './BookmarkletLink';
 
 export default function IntegrationIcons({ sessionId, parentId }) {
   return (
-    <Flex textAlign="center" mt={8} gridGap={2} alignItems="center">
+    <Flex textAlign="center" gridGap={2} alignItems="center">
       <Tooltip hasArrow label="Create iOS Shortcut">
         <span>
           <Link href="">
