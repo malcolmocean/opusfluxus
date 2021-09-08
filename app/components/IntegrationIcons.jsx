@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tooltip, Spacer, Flex, Link } from '@chakra-ui/react';
+import { Tooltip, Spacer, Flex, Link, Text } from '@chakra-ui/react';
 
 import { AndroidIcon, AppleIcon, BookmarkIcon } from '../icons';
 
@@ -25,7 +25,8 @@ export default function IntegrationIcons({ sessionId, parentId }) {
       <Tooltip hasArrow label="Drag me to bookmark bar">
         <span>
           <BookmarkletLink sessionId={sessionId} parentId={parentId}>
-            <BookmarkIcon boxSize="2em" />
+            <BookmarkIcon aria-label="s2wf" boxSize="2em" />
+            <Text display="none"> Send to Workflowy</Text>
           </BookmarkletLink>
         </span>
       </Tooltip>
