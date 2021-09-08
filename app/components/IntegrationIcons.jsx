@@ -10,7 +10,7 @@ export default function IntegrationIcons({ sessionId, parentId }) {
     <Flex mr="auto" gridGap={2} alignItems="center">
       <Tooltip hasArrow label="Create iOS Shortcut">
         <span>
-          <Link href="">
+          <Link href="https://www.icloud.com/shortcuts/206701b1559642d2b5316c7d2eaaa631">
             <AppleIcon boxSize="2em" />
           </Link>
         </span>

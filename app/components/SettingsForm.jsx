@@ -7,7 +7,6 @@ import {
   ButtonGroup,
   IconButton,
   Input,
-  Heading,
   Text,
 } from '@chakra-ui/react';
 
@@ -62,9 +61,6 @@ export default function SettingsForm(props) {
           />
         </ButtonGroup>
       </form>
-      {/* <Box width="full" mt={6}>
-        <Heading fontSize={'lg'}>{'Integrations'}</Heading>
-      </Box> */}
     </>
   );
 }
