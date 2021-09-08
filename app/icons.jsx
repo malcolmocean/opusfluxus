@@ -1,8 +1,6 @@
 import React from 'react';
 
-const white = '#FFFFFF';
-const black = '#000000';
-const gray = '#928E85';
+const gray = 'gray.400';
 
 import { createIcon } from '@chakra-ui/icons';
 
@@ -46,8 +44,11 @@ export const AppleIcon = createIcon({
   viewBox: '0 0 24 24',
   defaultProps: integrationStyles,
   path: [
-    <path stroke="none" d="M0 0h24v24H0z"></path>,
-    <path d="M9 7c-3 0-4 3-4 5.5 0 3 2 7.5 4 7.5 1.088-.046 1.679-.5 3-.5 1.312 0 1.5.5 3 .5s4-3 4-5c-.028-.01-2.472-.403-2.5-3-.019-2.17 2.416-2.954 2.5-3-1.023-1.492-2.951-1.963-3.5-2-1.433-.111-2.83 1-3.5 1-.68 0-1.9-1-3-1zM12 4a2 2 0 002-2 2 2 0 00-2 2"></path>,
+    <path key="1" stroke="none" d="M0 0h24v24H0z"></path>,
+    <path
+      key="2"
+      d="M9 7c-3 0-4 3-4 5.5 0 3 2 7.5 4 7.5 1.088-.046 1.679-.5 3-.5 1.312 0 1.5.5 3 .5s4-3 4-5c-.028-.01-2.472-.403-2.5-3-.019-2.17 2.416-2.954 2.5-3-1.023-1.492-2.951-1.963-3.5-2-1.433-.111-2.83 1-3.5 1-.68 0-1.9-1-3-1zM12 4a2 2 0 002-2 2 2 0 00-2 2"
+    ></path>,
   ],
 });
 
@@ -56,14 +57,17 @@ export const AndroidIcon = createIcon({
   viewBox: '0 0 24 24',
   defaultProps: integrationStyles,
   path: [
-    <path stroke="none" d="M0 0h24v24H0z"></path>,
-    <path d="M4 10L4 16"></path>,
-    <path d="M20 10L20 16"></path>,
-    <path d="M7 9h10v8a1 1 0 01-1 1H8a1 1 0 01-1-1V9a5 5 0 0110 0"></path>,
-    <path d="M8 3L9 5"></path>,
-    <path d="M16 3L15 5"></path>,
-    <path d="M9 18L9 21"></path>,
-    <path d="M15 18L15 21"></path>,
+    <path key="1" stroke="none" d="M0 0h24v24H0z"></path>,
+    <path key="2" d="M4 10L4 16"></path>,
+    <path key="3" d="M20 10L20 16"></path>,
+    <path
+      key="4"
+      d="M7 9h10v8a1 1 0 01-1 1H8a1 1 0 01-1-1V9a5 5 0 0110 0"
+    ></path>,
+    <path key="5" d="M8 3L9 5"></path>,
+    <path key="6" d="M16 3L15 5"></path>,
+    <path key="7" d="M9 18L9 21"></path>,
+    <path key="8" d="M15 18L15 21"></path>,
   ],
 });
 
@@ -72,7 +76,7 @@ export const BookmarkIcon = createIcon({
   viewBox: '0 0 24 24',
   defaultProps: integrationStyles,
   path: [
-    <path stroke="none" d="M0 0h24v24H0z"></path>,
-    <path d="M9 4h6a2 2 0 012 2v14l-5-3-5 3V6a2 2 0 012-2"></path>,
+    <path key="1" stroke="none" d="M0 0h24v24H0z"></path>,
+    <path key="2" d="M9 4h6a2 2 0 012 2v14l-5-3-5 3V6a2 2 0 012-2"></path>,
   ],
 });

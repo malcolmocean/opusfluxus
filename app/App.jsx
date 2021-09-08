@@ -12,17 +12,28 @@ import useLocalStorage from './hooks/useLocalStorage';
 import { useDisclosure } from '@chakra-ui/react';
 
 function App() {
-  const { value: sessionId, bind: bindSessionId } = useInput('', 'sessionId');
-  const { value: parentId, bind: bindParentId } = useInput('', 'parentId');
+  const {
+    value: sessionId,
+    bind: bindSessionId,
+    setValue: setSessionId,
+  } = useInput('', 'sessionId');
+  const {
+    value: parentId,
+    bind: bindParentId,
+    setValue: setParentId,
+  } = useInput('', 'parentId');
   const [top, setTop] = useLocalStorage('addToTop', true);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const modalProps = {
     sessionId,
-    parentId,
     bindSessionId,
+    setSessionId,
+    parentId,
     bindParentId,
+    setParentId,
+    top,
     setTop,
     onClose,
     isOpen,
