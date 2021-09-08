@@ -7,7 +7,7 @@ export default function SettingsToggler({ settingsShown, toggleSettings }) {
     <Box textAlign="right" py={0} mr={-4} mt={-4}>
       <IconButton
         aria-label="settings"
-        icon={<SettingsIcon />}
+        icon={<SettingsIcon boxSize="2em" />}
         onClick={toggleSettings}
         isRound={true}
         colorScheme={settingsShown ? 'teal' : ''}

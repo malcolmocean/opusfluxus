@@ -48,7 +48,7 @@ function App() {
           <SettingsToggler toggleSettings={onOpen} settingsShown={isOpen} />
         </Flex>
         <Flex textAlign="center" gridGap={2} alignItems="center">
-          <ArrowIcon />
+          <ArrowIcon boxSize="3em" color="red" />
           <Heading fontSize={'xl'}>{'Send to Workflowy'}</Heading>
         </Flex>
 

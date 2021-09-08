@@ -7,27 +7,25 @@ import BookmarkletLink from './BookmarkletLink';
 
 export default function IntegrationIcons({ sessionId, parentId }) {
   return (
-    <Flex textAlign="center" gridGap={2} alignItems="center">
+    <Flex mr="auto" gridGap={2} alignItems="center">
       <Tooltip hasArrow label="Create iOS Shortcut">
         <span>
           <Link href="">
-            <AppleIcon />
+            <AppleIcon boxSize="2em" />
           </Link>
         </span>
       </Tooltip>
       <Spacer />
       <Tooltip hasArrow label="Android support coming soon!">
-        <span>
-          <Link href="">
-            <AndroidIcon />
-          </Link>
+        <span style={{ cursor: 'not-allowed' }}>
+          <AndroidIcon boxSize="2em" />
         </span>
       </Tooltip>
       <Spacer />
       <Tooltip hasArrow label="Drag me to bookmark bar">
         <span>
           <BookmarkletLink sessionId={sessionId} parentId={parentId}>
-            <BookmarkIcon />
+            <BookmarkIcon boxSize="2em" />
           </BookmarkletLink>
         </span>
       </Tooltip>
