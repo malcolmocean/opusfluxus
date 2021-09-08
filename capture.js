@@ -13,11 +13,11 @@ function handleErr(reason) {
   }
 }
 
-const capture = async ({ parentId, text, note, priority } = {}) => {
+const capture = async ({ sessionId, parentId, text, note, priority } = {}) => {
   console.log('• • • new workflowy cxn • • •');
 
   let wf = new WorkflowyClient({
-    sessionid: process.env.SESSIONID,
+    sessionid: process.env.SESSIONID || sessionId,
     // includeSharedProjects: config.includeSharedProjects,
   });
   console.log('• • • refresh workflowy • • •');
