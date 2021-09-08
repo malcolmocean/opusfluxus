@@ -16,6 +16,7 @@ export default function SensitiveInput({ value, onChange }) {
         placeholder="Enter session ID"
         value={value}
         onChange={onChange}
+        fontSize="0.9em"
       />
       <InputRightElement width="4.5rem">
         <Button h="1.75rem" size="sm" onClick={handleClick}>

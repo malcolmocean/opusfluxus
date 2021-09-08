@@ -3,7 +3,7 @@ import {
   FormControl,
   FormLabel,
   FormHelperText,
-  Box,
+  Link,
   ButtonGroup,
   IconButton,
   Input,
@@ -23,7 +23,14 @@ export default function SettingsForm(props) {
   return (
     <>
       <Text mt="4" fontSize="sm">
-        Check the docs for more info on the below settings.
+        Check the{' '}
+        <Link
+          textDecorationLine={'underline'}
+          href="https://github.com/cjlm/send-to-workflowy#configuration"
+        >
+          docs
+        </Link>{' '}
+        for more info on the below settings.
       </Text>
       <form onSubmit={handleSubmit}>
         <FormControl id="session-id" mt="4">
@@ -33,7 +40,7 @@ export default function SettingsForm(props) {
         </FormControl>
         <FormControl id="parent-id" mt="4">
           <FormLabel>Parent ID:</FormLabel>
-          <Input type="text" {...bindParentId} />
+          <Input type="text" fontSize="0.9em" {...bindParentId} />
           <FormHelperText>The location to send to in Workflowy.</FormHelperText>
         </FormControl>
 
