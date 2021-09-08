@@ -1,16 +1,35 @@
-import React from 'react';
-import { Tooltip, Spacer, Flex, Link, Text } from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import {
+  Tooltip,
+  Spacer,
+  Flex,
+  Link,
+  Text,
+  useClipboard,
+} from '@chakra-ui/react';
 
 import { AndroidIcon, AppleIcon, BookmarkIcon } from '../icons';
 
 import BookmarkletLink from './BookmarkletLink';
 
 export default function IntegrationIcons({ sessionId, parentId }) {
+  const [configForShortcut, setConfigForShortcut] = useState('');
+
+  useEffect(() => {
+    setConfigForShortcut(`${parentId}\n${sessionId}`);
+  }, [sessionId, parentId]);
+
+  const { onCopy } = useClipboard(configForShortcut);
+
   return (
     <Flex mr="auto" gridGap={2} alignItems="center">
       <Tooltip hasArrow label="Create iOS Shortcut">
         <span>
-          <Link href="https://www.icloud.com/shortcuts/206701b1559642d2b5316c7d2eaaa631">
+          <Link
+            onClick={onCopy}
+            href="https://www.icloud.com/shortcuts/f57dbebff1ca4c9bb733b9f503eab90f"
+            target="_blank"
+          >
             <AppleIcon boxSize="2em" />
           </Link>
         </span>
