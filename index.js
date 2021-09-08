@@ -96,6 +96,7 @@ module.exports = class WorkflowyClient {
       return body;
     } catch (err) {
       console.error(`Error fetching document root: ${err.message}`);
+      process.exit(1);
     }
   }
   async refresh() {

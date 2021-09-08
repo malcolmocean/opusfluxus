@@ -64,6 +64,7 @@ To find your parent ID:
 
 - [ ] Android Integration
 - [ ] Date support
+- [ ] Multiple parent support
 - [ ] email-to-workflowy?
 - [ ] text-to-workflowy?
 

@@ -67,7 +67,7 @@ program
   .action(async (text, note) => {
     const wf = await initialize();
 
-    console.log('• • • creating workflowy node • • •');
+    console.log('⦿ creating workflowy node');
     let { id: parentId } = program.opts();
     parentId = applyAlias(parentId);
 
@@ -75,7 +75,7 @@ program
       console.log('parentId', parentId);
     }
 
-    const { priority, hiddencompleted, withid } = program.opts();
+    const { priority } = program.opts();
     try {
       const result = await wf.create(parentId, text, priority, note);
     } catch (err) {
@@ -88,7 +88,7 @@ program
   .command('tree <depth>')
   .description('print your workflowy nodes up to depth n')
   .action(async (depth) => {
-    console.log('• • • fetching workflowy tree • • •');
+    console.log('⦿ fetching workflowy tree');
 
     const wf = await initialize();
 
@@ -124,7 +124,7 @@ program
   .description('meta')
   .action(async () => {
     const wf = await initialize();
-    console.log('• • • fetching workflowy data • • •');
+    console.log('⦿ fetching workflowy data');
     try {
       const {
         projectTreeData: {
