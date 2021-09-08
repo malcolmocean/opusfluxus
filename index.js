@@ -77,26 +77,22 @@ module.exports = class WorkflowyClient {
         return body;
       }
     } catch (err) {
-      console.error(err);
+      throw err;
     }
   }
   async meta() {
     try {
+      const Cookie = `sessionid=${this.sessionid}`;
       const response = await fetch(URLS.meta, {
         method: 'GET',
-        headers: this.sessionid
-          ? {
-              Cookie: `sessionid=${this.sessionid}`,
-            }
-          : {},
+        headers: this.sessionid ? { Cookie } : {},
       });
 
       const body = await response.json();
       utils.httpAbove299toError({ response, body });
       return body;
     } catch (err) {
-      console.error(`Error fetching document root: ${err.message}`);
-      process.exit(1);
+      throw err;
     }
   }
   async refresh() {
@@ -104,21 +100,26 @@ module.exports = class WorkflowyClient {
       await this.login();
     }
 
-    const meta = await this.meta();
+    try {
+      const meta = await this.meta();
 
-    if (this.includeSharedProjects) {
-      WorkflowyClient.transcludeShares(meta);
+      if (this.includeSharedProjects) {
+        WorkflowyClient.transcludeShares(meta);
+      }
+      const mpti = meta.projectTreeData.mainProjectTreeInfo;
+      this._lastTransactionId = mpti.initialMostRecentOperationTransactionId;
+      this.outline = mpti.rootProjectChildren;
+
+      if (this.resolveMirrors) {
+        WorkflowyClient.transcludeMirrors(this.outline);
+      }
+      this.nodes = WorkflowyClient.pseudoFlattenUsingSet(this.outline);
+
+      return this.nodes;
+    } catch (err) {
+      console.error(err);
+      throw err;
     }
-    const mpti = meta.projectTreeData.mainProjectTreeInfo;
-    this._lastTransactionId = mpti.initialMostRecentOperationTransactionId;
-    this.outline = mpti.rootProjectChildren;
-
-    if (this.resolveMirrors) {
-      WorkflowyClient.transcludeMirrors(this.outline);
-    }
-    this.nodes = WorkflowyClient.pseudoFlattenUsingSet(this.outline);
-
-    return this.nodes;
   }
   async _update(operations) {
     const meta = await this.meta();
@@ -163,6 +164,7 @@ module.exports = class WorkflowyClient {
       return { response, body, timestamp };
     } catch (err) {
       console.error(err);
+      throw err;
     }
   }
 

@@ -1,18 +1,6 @@
 const WorkflowyClient = require('./index');
 require('dotenv').config();
 
-function handleErr(reason) {
-  while (reason.reason) {
-    reason = reason.reason;
-  }
-  if (reason.status == 404) {
-    console.log('It seems your sessionid has expired.');
-  } else {
-    console.error(`Error ${reason.status}:${reason.message}`);
-    process.exit(1);
-  }
-}
-
 const capture = async ({ sessionId, parentId, text, note, priority } = {}) => {
   try {
     console.log('⦿ new workflowy connection');
@@ -28,7 +16,12 @@ const capture = async ({ sessionId, parentId, text, note, priority } = {}) => {
     console.log('⦿ created!');
     return result;
   } catch (err) {
-    handleErr(err);
+    if (err.status == 404) {
+      console.log('It seems your sessionid has expired.');
+    } else {
+      console.error(`Error ${err.status}:${err.message}`);
+      throw err;
+    }
   }
 };
 

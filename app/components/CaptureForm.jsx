@@ -9,7 +9,7 @@ import Message from './Message';
 
 const messages = {
   success: 'Sent!',
-  error: 'Uh oh, there was a problem...',
+  error: 'Error connecting to Workflowy, please check your configuration.',
 };
 
 export default function CaptureForm(props) {

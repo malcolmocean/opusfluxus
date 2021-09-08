@@ -33,13 +33,13 @@ exports.handler = async (event, context) => {
     return {
       headers,
       statusCode: 200,
-      body: 'Created.',
+      body: 'Sent!',
     };
   } catch (err) {
     return {
       headers,
       statusCode: 500,
-      body: err,
+      body: `Error ${err.status}:${err.message}`,
     };
   }
 };
