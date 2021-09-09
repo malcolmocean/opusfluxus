@@ -1,5 +1,7 @@
-# ↪ send-to-workflowy
 
+<p align="center">
+<img src="./app/public/logo.png" height="200">
+</p>
 An unofficial way to send to WorkFlowy from anywhere.
 
 ## Intro
@@ -47,7 +49,8 @@ If you select the Apple link you'll be redirected to an iOS shortcut hosted in i
 
 Scroll all the way down to accept the shortcut. On the next page you'll be prompted to add your Session ID and Parent ID. The shortcut expects these in the following form
 
-```<sessionId>
+```
+<sessionId>
 <parentId>
 ```
 
