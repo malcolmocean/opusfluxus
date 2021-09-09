@@ -9,6 +9,7 @@ const fetch = require('node-fetch');
 
 const WF_URL = 'https://workflowy.com';
 const CLIENT_VERSION = 23;
+
 const URLS = {
   newAuth: `${WF_URL}/api/auth?client_version=${CLIENT_VERSION}`,
   ajaxLogin: `${WF_URL}/ajax_login`,
