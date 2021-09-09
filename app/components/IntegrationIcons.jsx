@@ -27,7 +27,7 @@ export default function IntegrationIcons({ sessionId, parentId }) {
         <span>
           <Link
             onClick={onCopy}
-            href="https://www.icloud.com/shortcuts/f57dbebff1ca4c9bb733b9f503eab90f"
+            href="https://www.icloud.com/shortcuts/2360624499784e0cbe699eb4647fa09a"
             target="_blank"
           >
             <AppleIcon boxSize="2em" />
