@@ -45,7 +45,7 @@ export default function IntegrationIcons({ sessionId, parentId }) {
         <span>
           <BookmarkletLink sessionId={sessionId} parentId={parentId}>
             <BookmarkIcon aria-label="s2wf" boxSize="2em" />
-            <Text display="none"> Send to Workflowy</Text>
+            <Text display="none"> Send to WorkFlowy</Text>
           </BookmarkletLink>
         </span>
       </Tooltip>

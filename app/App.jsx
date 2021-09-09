@@ -60,7 +60,7 @@ function App() {
         </Flex>
         <Flex textAlign="center" gridGap={2} alignItems="center">
           <ArrowIcon boxSize="3em" color="red" />
-          <Heading fontSize={'xl'}>{'Send to Workflowy'}</Heading>
+          <Heading fontSize={'xl'}>{'Send to WorkFlowy'}</Heading>
         </Flex>
 
         <Box my={4} textAlign="left">

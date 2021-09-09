@@ -36,12 +36,12 @@ export default function SettingsForm(props) {
         <FormControl id="session-id" mt="4">
           <FormLabel>Session ID:</FormLabel>
           <SensitiveInput {...bindSessionId} />
-          <FormHelperText>Required to send to your Workflowy.</FormHelperText>
+          <FormHelperText>Required to send to your WorkFlowy.</FormHelperText>
         </FormControl>
         <FormControl id="parent-id" mt="4">
           <FormLabel>Parent ID:</FormLabel>
           <Input type="text" fontSize="0.9em" {...bindParentId} />
-          <FormHelperText>The location to send to in Workflowy.</FormHelperText>
+          <FormHelperText>The location to send to in WorkFlowy.</FormHelperText>
         </FormControl>
 
         <FormControl id="priority" mt="4">

@@ -9,7 +9,7 @@ import Message from './Message';
 
 const messages = {
   success: 'Sent!',
-  error: 'Error connecting to Workflowy, please check your configuration.',
+  error: 'Error connecting to WorkFlowy, please check your configuration.',
 };
 
 export default function CaptureForm(props) {
@@ -56,7 +56,7 @@ export default function CaptureForm(props) {
         <FormControl id="text" mt="4">
           <FormLabel>Text:</FormLabel>
           <Input type="text" {...bindText} />
-          <FormHelperText>Text to go in your new Workflowy node</FormHelperText>
+          <FormHelperText>Text to go in your new WorkFlowy node</FormHelperText>
         </FormControl>
         <FormControl id="note" mt="4">
           <FormLabel>Note:</FormLabel>
