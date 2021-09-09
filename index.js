@@ -113,9 +113,8 @@ module.exports = class WorkflowyClient {
       if (this.resolveMirrors) {
         WorkflowyClient.transcludeMirrors(this.outline);
       }
-      this.nodes = WorkflowyClient.pseudoFlattenUsingSet(this.outline);
 
-      return this.nodes;
+      return this.outline;
     } catch (err) {
       console.error(err);
       throw err;

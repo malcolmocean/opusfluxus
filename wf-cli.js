@@ -93,19 +93,19 @@ program
     const wf = await initialize();
 
     const {
-      withnote,
-      hiddencompleted,
-      withid,
+      printNote,
+      hideCompleted,
+      printId,
       id: originalId,
     } = program.opts();
 
     const id = applyAlias(originalId);
-    const options = { withnote, hiddencompleted, withid };
+    const options = { printNote, hideCompleted, printId };
 
     if (id) {
       let node = wf.nodes.find((node) => node.id == id);
       if (node) {
-        recursivePrint(node, null, '', depth, options);
+        recursivePrint(node, undefined, '', depth, options);
       } else {
         console.log(`node ${id} not found`);
       }
@@ -115,7 +115,7 @@ program
         ch: wf.outline,
         id: '',
       };
-      recursivePrint(rootnode, null, '', depth, options);
+      recursivePrint(rootnode, undefined, '', depth, options);
     }
   });
 
@@ -148,18 +148,19 @@ function recursivePrint(
   maxDepth,
   options
 ) {
-  const { withid, withnote, hiddencompleted } = options;
-  if (hiddencompleted && node.cp) {
+  const { printId, printNote, hideCompleted } = options;
+  if (hideCompleted && node.cp) {
     return;
   }
 
-  let println = spaces + prefix + node.nm;
-  if (withnote && node.no) {
-    println += '\n' + spaces + '    ' + node.no;
+  let println = [spaces, prefix, node.nm].join('');
+
+  if (printNote && node.no) {
+    println += `\n${spaces}    ${node.no}`;
   }
 
-  if (withid) {
-    println += '\n[' + node.id + ']';
+  if (printId) {
+    println += ` [${node.id}]`;
   }
 
   console.log(println);
