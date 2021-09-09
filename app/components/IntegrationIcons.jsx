@@ -16,7 +16,7 @@ export default function IntegrationIcons({ sessionId, parentId }) {
   const [configForShortcut, setConfigForShortcut] = useState('');
 
   useEffect(() => {
-    setConfigForShortcut(`${parentId}\n${sessionId}`);
+    setConfigForShortcut(`${sessionId}\n${parentId}`);
   }, [sessionId, parentId]);
 
   const { onCopy } = useClipboard(configForShortcut);
