@@ -7,7 +7,6 @@ const { FormData } = require('formdata-node');
 const { FormDataEncoder } = require('form-data-encoder');
 const fetch = require('node-fetch');
 
-
 const WF_URL = 'https://workflowy.com';
 const CLIENT_VERSION = 23;
 
@@ -92,13 +91,10 @@ module.exports = class WorkflowyClient {
           headers: this.sessionid ? { Cookie } : {},
         });
 
-        const body = await response.text();
-        const JSONbuffer = simdjson.lazyParse(body);
+        const body = await response.json();
 
         utils.httpAbove299toError({ response, body });
-        this.metadata = {
-          projectTreeData: JSONbuffer.valueForKeyPath('projectTreeData'),
-        };
+        this.metadata = body;
       } catch (err) {
         throw err;
       }
