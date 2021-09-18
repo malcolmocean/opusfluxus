@@ -7,6 +7,7 @@ const { FormData } = require('formdata-node');
 const { FormDataEncoder } = require('form-data-encoder');
 const fetch = require('node-fetch');
 
+
 const WF_URL = 'https://workflowy.com';
 const CLIENT_VERSION = 23;
 
@@ -82,18 +83,25 @@ module.exports = class WorkflowyClient {
     }
   }
   async meta() {
-    try {
-      const Cookie = `sessionid=${this.sessionid}`;
-      const response = await fetch(URLS.meta, {
-        method: 'GET',
-        headers: this.sessionid ? { Cookie } : {},
-      });
+    if (!this.metadata) {
+      try {
+        const Cookie = `sessionid=${this.sessionid}`;
 
-      const body = await response.json();
-      utils.httpAbove299toError({ response, body });
-      return body;
-    } catch (err) {
-      throw err;
+        const response = await fetch(URLS.meta, {
+          method: 'GET',
+          headers: this.sessionid ? { Cookie } : {},
+        });
+
+        const body = await response.text();
+        const JSONbuffer = simdjson.lazyParse(body);
+
+        utils.httpAbove299toError({ response, body });
+        this.metadata = {
+          projectTreeData: JSONbuffer.valueForKeyPath('projectTreeData'),
+        };
+      } catch (err) {
+        throw err;
+      }
     }
   }
   async refresh() {
@@ -101,13 +109,13 @@ module.exports = class WorkflowyClient {
       await this.login();
     }
 
-    try {
-      const meta = await this.meta();
+    await this.meta();
 
+    try {
       if (this.includeSharedProjects) {
-        WorkflowyClient.transcludeShares(meta);
+        WorkflowyClient.transcludeShares(this.metadata);
       }
-      const mpti = meta.projectTreeData.mainProjectTreeInfo;
+      const mpti = this.metadata.projectTreeData.mainProjectTreeInfo;
       this._lastTransactionId = mpti.initialMostRecentOperationTransactionId;
       this.outline = mpti.rootProjectChildren;
 
@@ -122,10 +130,10 @@ module.exports = class WorkflowyClient {
     }
   }
   async _update(operations) {
-    const meta = await this.meta();
+    await this.meta();
 
-    const clientId = meta.projectTreeData.clientId;
-    const timestamp = utils.getTimestamp(meta);
+    const clientId = this.metadata.projectTreeData.clientId;
+    const timestamp = utils.getTimestamp(this.metadata);
 
     operations.forEach((operation) => {
       operation.client_timestamp = timestamp;
@@ -285,7 +293,7 @@ module.exports = class WorkflowyClient {
         },
       },
     ];
-    await this._update(operations).then(utils.httpAbove299toError);
+    await this._update(operations);
     return { id: projectid };
   }
   async update(nodes, newNames) {
