@@ -14,7 +14,7 @@ const initialize = async () => {
 
   if (!config.has('sessionid')) {
     console.log(`No config detected... starting authentication process...`);
-    auth();
+    await auth();
   }
 
   const sessionid = config.get('sessionid');
