@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "0.1.1-beta",
+  "version": "0.2.2-beta",
   "license": "MIT",
   "scripts": {
     "start": "snowpack dev --open none",

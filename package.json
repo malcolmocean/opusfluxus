@@ -1,6 +1,6 @@
 {
   "name": "send-to-workflowy",
-  "version": "0.1.1-beta",
+  "version": "0.2.2-beta",
   "description": "NodeJS wrapper for Workflowy with CLI and Netlify function",
   "main": "index.js",
   "private": true,
