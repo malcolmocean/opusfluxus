@@ -1,5 +1,5 @@
 <p align="center">
-<img src="./app/logo.png" height="200">
+<img src="./app/logo.png" height="200" width="400">
 </p>
 An unofficial way to send to WorkFlowy from anywhere.
 
