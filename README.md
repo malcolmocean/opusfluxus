@@ -1,6 +1,5 @@
-
 <p align="center">
-<img src="./app/public/logo.png" height="200">
+<img src="./app/logo.png" height="200">
 </p>
 An unofficial way to send to WorkFlowy from anywhere.
 
@@ -18,15 +17,16 @@ It helps you save links and text for later so you can concentrate on the task in
 
 ## ⚠️ Disclaimer ⚠️
 
-WorkFlowy doesn't have an official API so `send-to-workflowy` needs some configuration to talk to WorkFlowy. It doesn't store any of your login information or WorkFlowy data but it's up to you to keep your Session ID secure. 
+WorkFlowy doesn't have an official API so `send-to-workflowy` needs some configuration to talk to WorkFlowy. It doesn't store any of your login information or WorkFlowy data but it's up to you to keep your Session ID secure.
 
 ## How to use
 
-For most users `send-to-workflowy` is a web application hosted at https://send-to-workflowy.netlify.app/ 
+For most users `send-to-workflowy` is a web application hosted at https://send-to-workflowy.netlify.app/
 
 Simply add your Session ID and Parent ID on the Settings panel to send to your WorkFlowy. These IDs are stored in your browser cache for convenience. They are used to communicate with your WorkFlowy but otherwise are not tracked by `send-to-workflowy`. See [Configuration](#configuration) for details on finding these IDs.
 
 <a name="configuration"></a>
+
 ## Configuration
 
 ### Session ID
@@ -49,14 +49,15 @@ All nodes in WorkFlowy have a parent ID. You can provide this to `send-to-workfl
 To find your parent ID:
 
 - Open WorkFlowy in a browser
-- Navigate to the node you wish to send to
-- Right click the node and select "Inspect"
-- The parent ID is referenced as "projectid" a few rows above the line highlighted in the code.
-  - e.g. d4d9fe09-f770-41ef-d826-cb8fa483424f
+- Find the node you wish to send to
+- Open the developer tools. (With Chrome: Ctrl + Shift + J on Windows, Command + Opt + J on macOS)
+- Run `copy(WF.currentItem().data.id)`
+- Your parent ID will now be on your clipboard ready to be pasted into `send-to-workflowy`
+  - It will look something like `d4d9fe09-f770-41ef-d826-cb8fa483424f`
 
 ## Integrations
 
-The Settings panel also provides a link to the iOS shortcut and bookmarklet to make it even easier to send to WorkFlowy from your phone or without going to the site. Once you've configured your Session ID and Parent ID the integration icons on the Settings page are ready to use. 
+The Settings panel also provides a link to the iOS shortcut and bookmarklet to make it even easier to send to WorkFlowy from your phone or without going to the site. Once you've configured your Session ID and Parent ID the integration icons on the Settings page are ready to use.
 
 ### iOS Shortcut
 
