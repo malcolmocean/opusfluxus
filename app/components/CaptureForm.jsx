@@ -5,14 +5,7 @@ import { FormControl, FormLabel, FormHelperText } from '@chakra-ui/react';
 import { Button, CircularProgress, Checkbox } from '@chakra-ui/react';
 import { Input, Textarea, Box, Collapse } from '@chakra-ui/react';
 
-import { useDisclosure } from '@chakra-ui/react';
-
-import Message from './Message';
-
-const messages = {
-  success: 'Sent!',
-  error: 'Error connecting to WorkFlowy, please check your configuration.',
-};
+import { useDisclosure, useToast } from '@chakra-ui/react';
 
 export default function CaptureForm(props) {
   const { parentId, sessionId, top } = props;
@@ -25,11 +18,23 @@ export default function CaptureForm(props) {
   const [status, setStatus] = useState('');
 
   const { isOpen: isNoteShown, onToggle } = useDisclosure();
+  const toast = useToast();
+
+  const showToast = (text, status) => {
+    toast({
+      title: text,
+      description: '',
+      status,
+      isClosable: false,
+      duration: 4000,
+      position: 'top',
+    });
+  };
 
   const handleSubmit = async (evt) => {
     evt.preventDefault();
-
     setStatus('loading');
+
     try {
       const response = await fetch('/send', {
         method: 'POST',
@@ -41,22 +46,26 @@ export default function CaptureForm(props) {
       });
       if (response.ok) {
         setStatus('success');
+
         resetText();
         resetNote();
+
+        showToast('Sent!', 'success');
       } else {
         throw new Error(`${response.status} - ${response.statusText}`);
       }
     } catch (err) {
       console.error(err);
       setStatus('error');
+      showToast(
+        'Error connecting to WorkFlowy, please check your configuration.',
+        'error'
+      );
     }
   };
   return (
     <>
       <form onSubmit={handleSubmit}>
-        {['error', 'success'].includes(status) && (
-          <Message message={messages[status]} status={status} />
-        )}
         <FormControl id="text" mt="4">
           <FormLabel>Text:</FormLabel>
           <Input autoFocus type="text" {...bindText} />
@@ -65,7 +74,7 @@ export default function CaptureForm(props) {
 
         <FormControl id="note" mt="4">
           <Checkbox isChecked={isNoteShown} onChange={onToggle} size="sm">
-            Include Note:
+            {`Include Note${isNoteShown ? ':' : ''}`}
           </Checkbox>
           <Collapse in={isNoteShown} animateOpacity>
             <Textarea type="text" {...bindNote} />
