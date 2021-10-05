@@ -55,7 +55,7 @@ export default function CaptureForm(props) {
         )}
         <FormControl id="text" mt="4">
           <FormLabel>Text:</FormLabel>
-          <Input type="text" {...bindText} />
+          <Input autoFocus type="text" {...bindText} />
           <FormHelperText>Text to go in your new WorkFlowy node</FormHelperText>
         </FormControl>
         <FormControl id="note" mt="4">
