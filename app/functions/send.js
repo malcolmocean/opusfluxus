@@ -1,16 +1,13 @@
-const { capture } = require('../../capture');
+const { capture } = require('../../core/capture');
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const {
-    text = '',
-    note = '',
-    priority = 0,
-    ...rest
-  } = JSON.parse(event.body);
+  const { text = '', note = '', priority = 0, ...rest } = JSON.parse(
+    event.body
+  );
 
   let { parentId, sessionId } = rest;
 
