@@ -207,7 +207,7 @@ module.exports = Workflowy = (function() {
 
   /* modifies the tree so that mirror bullets are in all places they should be */
   Workflowy.transcludeMirrors = function (outline) {
-    console.log("transcludeMirrors")
+    // console.log("transcludeMirrors")
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline)
     const transcludeChildren = (arr) => {
       for (let j = 0, len = arr.length; j < len; j++) {
