@@ -50,7 +50,6 @@ function run (argv) {
   argv = argv || {_: []}
 
   const Workflowy = require('./')
-  const Q = require('q')
 
   function handleErr(reason) {
     while (reason.reason) {reason = reason.reason}
@@ -130,6 +129,7 @@ function run (argv) {
 
   var command = argv._[0]
   async function runCommand () {
+    console.log("runCommand")
     if (command === 'alias') {
       verb = argv._[1]
       if (verb === 'add') {
@@ -147,7 +147,9 @@ function run (argv) {
     }
 
     var wf = new Workflowy({sessionid: config.sessionid, includeSharedProjects: config.includeSharedProjects})
-    await wf.refresh()
+    await wf.refresh().catch(err => {
+      console.log('REFRESH error', err)
+    })
     if (command === 'capture') {
       console.log("• • • creating workflowy node • • •")
       var parentid = apply_alias(argv.parentid)
@@ -157,7 +159,7 @@ function run (argv) {
       var note = argv.note
       return wf.create(parentid, name, priority, note).then(function (result) {
         console.log("created!")
-      }, handleErr).fin(() => process.exit())
+      }, handleErr).then(() => process.exit())
     } else if (command === 'tree') { console.log("• • • fetching workflowy tree • • •")
       depth = argv.depth || argv._[1] || 2
       id = apply_alias(argv.id)
@@ -175,7 +177,7 @@ function run (argv) {
           } else {
             console.log('node ' + id + ' not found')
           }
-        }, handleErr).fin(() => process.exit())
+        }, handleErr).then(() => process.exit())
       } else {
         return wf.outline.then(function (outline) {
           var rootnode = {
@@ -184,7 +186,7 @@ function run (argv) {
             id: ''
           }
           recursivePrint(rootnode, null, '', depth)
-        }, handleErr).fin(() => process.exit())
+        }, handleErr).then(() => process.exit())
       }
     } else if (command === 'create_tree_demo') {
       console.log("🌲 🌲 🌲 create tree demo 🌲 🌲 🌲")
@@ -210,7 +212,7 @@ function run (argv) {
         console.log(tree) // now with IDs
       }).catch(err => {
         console.log("🌲 tree creation err:", err)
-      }).fin(() => process.exit())
+      }).then(() => process.exit())
     } else { console.log("• • • fetching workflowy data • • •")
       return wf.meta.then(function (meta) {
         console.log("logged in as " + meta.settings.username)
@@ -222,54 +224,79 @@ function run (argv) {
         } else {
           console.log("(to view commands, run with --help)")
         }
-      }, handleErr).fin(() => process.exit())
+      }, handleErr).then(() => process.exit())
     }
   }
 
-  function auth (opts={}) {
+  // THIS IS NOT ACTUALLY WORKING, FOR VARIOUS REASONS
+  // probably a bunch of index.js wants to be restructured, honestly
+  // since it keeps failing in opaque ways
+  // and I'd like to get rid of the circular dependency inside one of my modules
+
+  async function auth (opts={}) {
+    const prompt = require('prompt')
+    // console.log("What is your workflowy login info? You'll need to get your sessionid from your browser's cookies, since Workflowy hasn't made a proper API yet.")
+    console.log("What is your workflowy sessionid? You have to find it in your browser's cookies, since Workflowy hasn't made a proper API yet.")
+    let schema = {properties: {sessionid: {required: true}}}
+    prompt.start()
+    const result = await prompt.get(schema)
+    let wf = new Workflowy({sessionid: result.sessionid})
+    await wf.login()
+    if (!wf.sessionid) {
+      throw new Error("Failed to get sessionid")
+    }
+    console.log("Login successful.")
+    try {
+      config.sessionid = wf.sessionid
+      writeWfConfig(config)
+      console.log("Successfully wrote sessionid to " + config_path)
+    } catch (e) {
+      return console.log("Failed to write sessionid to " + config_path)
+    }
+    if (command) {
+      console.log("command", command)
+      return runCommand()
+    } else {
+      console.log("returning config.sessionid", config.sessionid)
+      return config.sessionid
+    }
+  }
+
+  async function auth_old (opts={}) {
     const prompt = require('prompt')
     console.log("What is your workflowy login info? This will not be saved, merely used once to authenticate.")
-    var schema = {
-      properties: {
-        email: {
-          required: true
-        }
-      }
-    }
-    var deferred = Q.defer()
+    let schema = {properties: {email: {required: true}}}
     let wf = new Workflowy({})
-    prompt.start()
-    prompt.get(schema, function (err, result) {
-      if (err) {console.log('\nCANCELLED\n'); process.exit(1)}
+    try {
+      prompt.start()
+      // return
+      const result = await prompt.get(schema).catch(err => {
+        console.log('prompt.get err', err)
+      })
+      return
+      // if (err) {console.log('\nCANCELLED\n'); process.exit(1)}
       const email = result.email
-      wf.getAuthType(email).then(authType => {
-        if (authType == 'password') {
-          schema = {properties: {
-            password: {
-              required: true,
-              hidden: true
-            }
-          }}
-        } else if (authType == 'code') {
-          console.log(`An email has been sent to ${email} with a login code. Enter that code here:`)
-          schema = {properties: {code: {required: true}}}
-        }
-        prompt.get(schema, function (err, result2) {
-          if (err) {console.log('\nCANCELLED\n'); process.exit(1)}
-          wf = new Workflowy({username: email, password: result2.password, code: result2.code})
-          wf.login().then(function () {
-            if (wf.sessionid) {
-              deferred.resolve("Successfully wrote sessionid to " + config_path)
-            } else {
-              deferred.reject(new Error("Failed to get sessionid"))
-            }
-          }).catch(err => {
-            console.log("err", err)
-          })
-        })
-      }, err => deferred.reject(err))
-    })
-    return deferred.promise.then(() => {
+      console.log("wf.getAuthType", wf.getAuthType)
+      authType = await wf.getAuthType(email)
+      console.log("authType", authType)
+      if (authType == 'password') {
+        schema = {properties: {
+          password: {
+            required: true,
+            hidden: true
+          }
+        }}
+      } else if (authType == 'code') {
+        console.log(`An email has been sent to ${email} with a login code. Enter that code here:`)
+        schema = {properties: {code: {required: true}}}
+      }
+      const result2 = prompt.get(schema)
+      if (err) {console.log('\nCANCELLED\n'); process.exit(1)}
+      wf = new Workflowy({username: email, password: result2.password, code: result2.code})
+      await wf.login()
+      if (!wf.sessionid) {
+        throw new Error("Failed to get sessionid")
+      }
       console.log("Login successful.")
       try {
         config.sessionid = wf.sessionid
@@ -278,9 +305,6 @@ function run (argv) {
       } catch (e) {
         return console.log("Failed to write sessionid to " + config_path)
       }
-    }, err => {
-      console.log("Failed to get sessionid. Check your username/password.")
-    }).then(() => {
       if (command) {
         console.log("command", command)
         return runCommand()
@@ -288,7 +312,9 @@ function run (argv) {
         console.log("returning config.sessionid", config.sessionid)
         return config.sessionid
       }
-    })
+    } catch (err) {
+      console.log("Failed to get sessionid. Check your username/password.")
+    }
   }
 
   if (argv.help) {

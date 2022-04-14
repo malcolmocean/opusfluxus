@@ -1,4 +1,4 @@
-const Q = require('q')
+const fetch = require('node-fetch')
 const request = require('request')
 const querystring = require('querystring')
 const uuidv4 = require('uuid/v4')
@@ -10,20 +10,37 @@ var utils = {
   makePollId: function () {
     return (Math.random() + 1).toString(36).substr(2, 8)
   },
-  httpAbove299toError: function (arg) {
+  httpAbove299toError_OLD: async function (arg) {
     var body, error, resp
     resp = arg[0], body = arg[1]
     var status = resp.statusCode
     if(!((status === 302) && (resp.headers.location === "https://workflowy.com/" || resp.headers.location === "/"))) {
       if ((300 <= status && status < 600)) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status, body: body})
+        throw {status: status, message: "Error with request " + resp.request.uri.href + ": " + status, body: body}
       }
       if (error = body.error) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error, body: body})
+        throw {status: status, message: "Error with request " + resp.request.uri.href + ": " + error, body: body}
       }
     }
     return arg
   },
+  httpAbove299toError: async response => {
+    const status = response.status
+    const location = response.headers.location
+    if (status < 300) {return response}
+    if (status == 302 && (location == "https://workflowy.com/" || location === "/")) {return response}
+    const errorBody = await response.text()
+    if ((300 <= status && status < 600)) {
+      throw {status: status, message: "Error with request " + response.url + ": " + status, body: errorBody}
+    }
+    // does workflowy ever send {status: 200, {body: {error: "some error"}}}??
+    // const errorJson = JSON.parse(errorBody)
+    // but with a try/catch
+    // if (error = body.error) {
+    //   throw {status: status, message: "Error with request " + response.url + ": " + error, body: body}
+    // }
+    return response
+  }
 }
 
 module.exports = Workflowy = (function() {
@@ -55,22 +72,27 @@ module.exports = Workflowy = (function() {
   }
 
   Workflowy.prototype.getAuthType = function (email, options={}) {
-    return Q.ninvoke(this.request, 'post', {
-      url: Workflowy.urls.newAuth,
+    TODO = 'should that be form or body or what?'
+    fetch(Workflowy.urls.newAuth, {
+      method: 'POST',
       form: {
         email: email,
         allowSignup: options.allowSignup || false,
       }
     }).then(utils.httpAbove299toError)
     .then(result => {
+      console.log("========================================")
+      console.log("result", result)
+      console.log("result[1]", result[1])
+      console.log("========================================")
       return result[1].authType
     })
   }
 
   Workflowy.prototype.login = function () {
     if (!this.sessionid) {
-      return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.newAuth,
+      return fetch(Workflowy.urls.newAuth, {
+        method: 'POST',
         form: {
           email: this.username,
           password: this.password || '',
@@ -81,7 +103,7 @@ module.exports = Workflowy = (function() {
       .then(arg => {
         var body = arg[1]
         if (/Please enter a correct username and password./.test(body)) {
-          return Q.reject({status: 403, message: "Incorrect login info"})
+          throw {status: 403, message: "Incorrect login info"}
         }
       }).then(arg => {
         var jar = this.jar._jar.toJSON()
@@ -91,43 +113,56 @@ module.exports = Workflowy = (function() {
             break
           }
         }
-      }, err => Q.reject(err))
+      })
     }
     return this.refresh()
   }
 
   Workflowy.prototype.refresh = async function () {
+    try {
+
+    let errorIfAny
     if (!this.sessionid) {
-      await this.login()
+      await this.login().catch(err => {
+        err.message = "Error logging into workflowy: " + err.message
+        errorIfAny = err
+      })
     }
-    var opts = {
-      url: Workflowy.urls.meta
-    }
-    if (this.sessionid) {
-      opts.headers = {
-        Cookie: 'sessionid='+this.sessionid
-      }
-    }
-    this.meta = Q.ninvoke(this.request, 'get', opts)
-    .then(utils.httpAbove299toError)
-    .then(arg => arg[1])
-    .fail(err => {
-      err.message = "Error fetching document root: " + err.message
-      return Q.reject(err)
+    const meta = await fetch(Workflowy.urls.meta, {
+      method: 'GET',
+      headers: {
+        'Cookie': `sessionid=${this.sessionid}-NOPE;`,
+      },
     })
-    const meta = await this.meta
-    if (this.includeSharedProjects) {
-      Workflowy.transcludeShares(meta)
+    .then(utils.httpAbove299toError)
+    .then(response => response.json())
+    .catch(err => {
+      err.message = "Error fetching workflowy root: " + err.message
+      errorIfAny = err
+    })
+    if (errorIfAny) {
+      this.meta = Promise.reject(errorIfAny)
+      this.outline = Promise.reject(errorIfAny)
+      this.nodes = Promise.reject(errorIfAny)
+    } else {
+      if (this.includeSharedProjects) {
+        Workflowy.transcludeShares(meta)
+      }
+      const mpti = meta.projectTreeData.mainProjectTreeInfo
+      this._lastTransactionId = mpti.initialMostRecentOperationTransactionId
+      const outline = mpti.rootProjectChildren
+      // outline.splice(2, 1)
+      if (this.resolveMirrors) {
+        Workflowy.transcludeMirrors(outline)
+      }
+      const nodes = Workflowy.pseudoFlattenUsingSet(outline)
+      this.meta = Promise.resolve(meta)
+      this.outline = Promise.resolve(outline)
+      this.nodes = Promise.resolve(nodes)
     }
-    const mpti = meta.projectTreeData.mainProjectTreeInfo
-    this._lastTransactionId = mpti.initialMostRecentOperationTransactionId
-    this.outline = Q.resolve(mpti.rootProjectChildren)
-    const outline = await this.outline
-    // outline.splice(2, 1)
-    if (this.resolveMirrors) {
-      Workflowy.transcludeMirrors(outline)
+    } catch (err) {
+      console.log("refresh internal error", err)
     }
-    return this.nodes = Q.resolve(Workflowy.pseudoFlattenUsingSet(outline))
   }
 
   Workflowy.prototype._update = function (operations) {
@@ -139,8 +174,8 @@ module.exports = Workflowy = (function() {
         operation = operations[j]
         operation.client_timestamp = timestamp
       }
-      return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.update,
+      return fetch(Workflowy.urls.update, {
+        method: 'POST',
         form: {
           client_id: clientId,
           client_version: Workflowy.clientVersion,
@@ -208,7 +243,6 @@ module.exports = Workflowy = (function() {
   /* modifies the tree so that mirror bullets are in all places they should be */
   // uncomment the ignoreIds lines to make it not infinitely recurse
   Workflowy.transcludeMirrors = function (outline) {
-    console.log("transcludeMirrors")
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline)
     const transcludeChildren = (arr) => {
     // const transcludeChildren = (arr, ignoreIds) => {
@@ -465,9 +499,12 @@ module.exports = Workflowy = (function() {
   return Workflowy
 })()
 
-module.exports.cli = require('./wf.js').run
-module.exports.loadWfConfig = require('./wf.js').loadWfConfig
-module.exports.writeWfConfig = require('./wf.js').writeWfConfig
+const wf = require('./wf.js')
+if ('run' in wf) { // avoid circular dependency
+  module.exports.cli = wf.run
+  module.exports.loadWfConfig = wf.loadWfConfig
+  module.exports.writeWfConfig = wf.writeWfConfig
+}
 
 // ---
 // generated by coffee-script 1.9.2
