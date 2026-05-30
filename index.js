@@ -1,7 +1,17 @@
 const Q = require('q')
-const request = require('request')
+const axios = require('axios')
+const { CookieJar } = require('tough-cookie')
+const { wrapper } = require('axios-cookiejar-support')
 const querystring = require('querystring')
 const uuidv4 = require('uuid/v4')
+
+// Network-level failures worth retrying (transient). Excludes HTTP-status
+// errors (those carry err.status, not err.code) so we don't retry auth failures.
+// ECONNABORTED is what axios raises when its own `timeout` fires.
+const TRANSIENT_CODES = new Set([
+  'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED',
+  'ENOTFOUND', 'EAI_AGAIN', 'EPIPE', 'ENETUNREACH', 'EHOSTUNREACH',
+])
 
 var utils = {
   getTimestamp: function (meta) {
@@ -10,19 +20,43 @@ var utils = {
   makePollId: function () {
     return (Math.random() + 1).toString(36).substr(2, 8)
   },
-  httpAbove299toError: function (arg) {
-    var body, error, resp
-    resp = arg[0], body = arg[1]
-    var status = resp.statusCode
-    if(!((status === 302) && (resp.headers.location === "https://workflowy.com/" || resp.headers.location === "/"))) {
-      if ((300 <= status && status < 600)) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + status, body: body})
-      }
-      if (error = body.error) {
-        return Q.reject({status: status, message: "Error with request " + resp.request.uri.href + ": " + error, body: body})
+  isTransientNetworkError: function (err) {
+    const code = err && (err.code || (err.cause && err.cause.code))
+    return TRANSIENT_CODES.has(code)
+  },
+  // Run an async fn, retrying with exponential backoff on transient network
+  // errors only. Safe for idempotent requests (GETs); do NOT use for mutating
+  // POSTs, where a retry after a lost response could double-apply operations.
+  withRetry: async function (fn, options) {
+    options = options || {}
+    const retries = options.retries != null ? options.retries : 2
+    const baseDelayMs = options.baseDelayMs || 500
+    let attempt = 0
+    while (true) {
+      try {
+        return await fn()
+      } catch (err) {
+        if (attempt >= retries || !utils.isTransientNetworkError(err)) {
+          throw err
+        }
+        attempt++
+        await new Promise(resolve => setTimeout(resolve, baseDelayMs * Math.pow(2, attempt - 1)))
       }
     }
-    return arg
+  },
+  httpAbove299toError: function (resp) {
+    const status = resp.status
+    const body = resp.data
+    
+    if(!((status === 302) && (resp.headers.location === "https://workflowy.com/" || resp.headers.location === "/"))) {
+      if ((300 <= status && status < 600)) {
+        return Q.reject({status: status, message: "Error with request " + resp.config.url + ": " + status, body: body})
+      }
+      if (body && body.error) {
+        return Q.reject({status: status, message: "Error with request " + resp.config.url + ": " + body.error, body: body})
+      }
+    }
+    return resp
   },
 }
 
@@ -38,11 +72,16 @@ module.exports = Workflowy = (function() {
   }
 
   function Workflowy(auth, jar) {
-    this.jar = jar ? request.jar(jar) : request.jar()
-    this.request = request.defaults({
+    this.jar = jar || new CookieJar()
+    this.timeout = auth.timeout != null ? auth.timeout : 60000
+    this.maxRetries = auth.maxRetries != null ? auth.maxRetries : 2
+    this.request = wrapper(axios.create({
       jar: this.jar,
-      json: true
-    })
+      validateStatus: null, // don't throw on any status; httpAbove299toError handles it
+      timeout: this.timeout,
+      maxContentLength: Infinity, // workflowy trees can be many MB
+      maxBodyLength: Infinity,
+    }))
     this.sessionid = auth.sessionid
     this.includeSharedProjects = auth.includeSharedProjects
     this.resolveMirrors = auth.resolveMirrors !== false // default true, since mirrors are new so there's no expected behavior and most users will want this
@@ -55,43 +94,41 @@ module.exports = Workflowy = (function() {
   }
 
   Workflowy.prototype.getAuthType = function (email, options={}) {
-    return Q.ninvoke(this.request, 'post', {
-      url: Workflowy.urls.newAuth,
-      form: {
-        email: email,
-        allowSignup: options.allowSignup || false,
-      }
+    return this.request.post(Workflowy.urls.newAuth, querystring.stringify({
+      email: email,
+      allowSignup: options.allowSignup || false,
+    }), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     }).then(utils.httpAbove299toError)
     .then(result => {
-      return result[1].authType
+      return result.data.authType
     })
   }
 
   Workflowy.prototype.login = function () {
     if (!this.sessionid) {
-      return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.newAuth,
-        form: {
-          email: this.username,
-          password: this.password || '',
-          code: this.code || '',
-        }
+      return this.request.post(Workflowy.urls.newAuth, querystring.stringify({
+        email: this.username,
+        password: this.password || '',
+        code: this.code || '',
+      }), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       })
       .then(utils.httpAbove299toError)
-      .then(arg => {
-        var body = arg[1]
-        if (/Please enter a correct username and password./.test(body)) {
+      .then(resp => {
+        const body = resp.data
+        if (typeof body === 'string' && /Please enter a correct username and password./.test(body)) {
           return Q.reject({status: 403, message: "Incorrect login info"})
         }
-      }).then(arg => {
-        var jar = this.jar._jar.toJSON()
-        for (c in jar.cookies) {
-          if (jar.cookies[c].key === 'sessionid') {
-            this.sessionid = jar.cookies[c].value
+      }).then(() => {
+        const jar = this.jar.toJSON()
+        for (const cookie of jar.cookies) {
+          if (cookie.key === 'sessionid') {
+            this.sessionid = cookie.value
             break
           }
         }
-      }, err => Q.reject(err))
+      })
     }
     return this.refresh()
   }
@@ -100,18 +137,13 @@ module.exports = Workflowy = (function() {
     if (!this.sessionid) {
       await this.login()
     }
-    var opts = {
-      url: Workflowy.urls.meta
-    }
-    if (this.sessionid) {
-      opts.headers = {
-        Cookie: 'sessionid='+this.sessionid
-      }
-    }
-    this.meta = Q.ninvoke(this.request, 'get', opts)
-    .then(utils.httpAbove299toError)
-    .then(arg => arg[1])
-    .fail(err => {
+    const headers = this.sessionid ? { Cookie: 'sessionid='+this.sessionid } : {}
+    this.meta = utils.withRetry(
+      () => this.request.get(Workflowy.urls.meta, { headers: headers }).then(utils.httpAbove299toError),
+      { retries: this.maxRetries }
+    )
+    .then(resp => resp.data)
+    .catch(err => {
       err.message = "Error fetching document root: " + err.message
       return Q.reject(err)
     })
@@ -139,27 +171,27 @@ module.exports = Workflowy = (function() {
         operation = operations[j]
         operation.client_timestamp = timestamp
       }
-      return Q.ninvoke(this.request, 'post', {
-        url: Workflowy.urls.update,
-        form: {
-          client_id: clientId,
-          client_version: Workflowy.clientVersion,
-          push_poll_id: utils.makePollId(),
-          push_poll_data: JSON.stringify([
-            {
-              most_recent_operation_transaction_id: this._lastTransactionId,
-              operations: operations
-            }
-          ])
-        },
+      // NOT wrapped in withRetry: re-sending operations after a lost response
+      // could double-apply mutations.
+      return this.request.post(Workflowy.urls.update, querystring.stringify({
+        client_id: clientId,
+        client_version: Workflowy.clientVersion,
+        push_poll_id: utils.makePollId(),
+        push_poll_data: JSON.stringify([
+          {
+            most_recent_operation_transaction_id: this._lastTransactionId,
+            operations: operations
+          }
+        ])
+      }), {
         headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
           Cookie: 'sessionid='+this.sessionid
         }
       })
       .then(utils.httpAbove299toError)
-      .then(arg => {
-        var resp = arg[0]
-        var body = arg[1]
+      .then(resp => {
+        const body = resp.data
         this._lastTransactionId = body.results[0].new_most_recent_operation_transaction_id
         return [resp, body, timestamp]
       })
@@ -207,7 +239,6 @@ module.exports = Workflowy = (function() {
 
   /* modifies the tree so that mirror bullets are in all places they should be */
   Workflowy.transcludeMirrors = function (outline) {
-    console.log("transcludeMirrors")
     const nodesByIdMap = Workflowy.getNodesByIdMap(outline)
     const transcludeChildren = (arr) => {
       for (let j = 0, len = arr.length; j < len; j++) {
@@ -408,7 +439,6 @@ module.exports = Workflowy = (function() {
       }
     ]
     return this._update(operations)
-    .then(utils.httpAbove299toError)
     .then(() => ({id: projectid}))
   }
 
@@ -454,6 +484,7 @@ module.exports = Workflowy = (function() {
 module.exports.cli = require('./wf.js').run
 module.exports.loadWfConfig = require('./wf.js').loadWfConfig
 module.exports.writeWfConfig = require('./wf.js').writeWfConfig
+module.exports._utils = utils // exposed for tests
 
 // ---
 // generated by coffee-script 1.9.2
