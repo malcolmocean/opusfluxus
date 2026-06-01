@@ -12,10 +12,14 @@ This was forked from [ruxi/workflowy](https://github.com/ruxi/workflowy) (which 
 
 Also this project is in JavaScript, so if you prefer that to working in CoffeeScript, you've come to the right place.
 
-(I'm planning to get rid of `Q` and use `bluebird` or native Promises though, plus many other structural improvements.)
+HTTP requests now go through [`axios`](https://github.com/axios/axios) (with `tough-cookie` for the cookie jar); the old `request` dependency is gone. `Q` is still used internally for a few promise rejections — removing it fully is still on the list, along with other structural improvements.
 
 ## Changelog
 
+- 2026-05-30 (0.8.0):
+  - migrated HTTP from the deprecated `request` library to `axios` + `tough-cookie`
+  - **the document-fetching GET now has a 60s timeout and retries transient network errors (ETIMEDOUT / ECONNRESET / ECONNABORTED / ...) with exponential backoff.** This fixes intermittent `read ETIMEDOUT` failures on large trees, where a socket read would occasionally stall and die even though a retry succeeds in seconds. Mutating `push_and_poll` writes are deliberately *not* retried (a retry after a lost response could double-apply operations).
+  - added a `node:test` suite (`pnpm test`) covering the retry/timeout/error-mapping logic, including a local-HTTP-server integration test that fails-then-succeeds.
 - 2019-10-08:
   - Added new `createTree` and `createTrees` functions
   - Added a new `getAuthType(email)` function, that takes an email and returns `"password"`, or `"code"` (it might also return `"google"` but it also seems maybe they removed it).
